@@ -1,0 +1,26 @@
+{
+	"id": "kramer-kds-7",
+	"name": "kramer-kds-7",
+	"shortname": "kds-7",
+	"description": "Companion module for Kramer KDS-7 series",
+	"version": "0.1.0",
+	"license": "MIT",
+	"repository": "git+https://github.com/bitfocus/companion-module-your-module-name.git",
+	"bugs": "https://github.com/bitfocus/companion-module-your-module-name/issues",
+	"maintainers": [
+		{
+			"name": "Tuomas Järvenkylä",
+			"email": "Your email"
+		}
+	],
+	"runtime": {
+		"type": "node18",
+		"api": "nodejs-ipc",
+		"apiVersion": "0.0.0",
+		"entrypoint": "../main.js"
+	},
+	"legacyIds": [],
+	"manufacturer": "Kramer",
+	"products": ["KDS-EN7/KDS-DEC7"],
+	"keywords": ["AVoIP", "Streaming"]
+}
