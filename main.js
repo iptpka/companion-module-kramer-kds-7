@@ -1,10 +1,12 @@
-const { InstanceBase, Regex, runEntrypoint, InstanceStatus } = require('@companion-module/base')
-const UpgradeScripts = require('./upgrades')
-const UpdateActions = require('./actions')
-const UpdateFeedbacks = require('./feedbacks')
-const UpdateVariableDefinitions = require('./variables')
+import { InstanceBase, Regex, runEntrypoint, InstanceStatus, TCPHelper } from '@companion-module/base'
+import { default as UpgradeScripts } from './upgrades.js'
+import { getActionDefinitions } from './actions.js'
+import { getFeedBackDefinitions } from './feedbacks.js'
+import { getVariableDefinitions } from './variables.js'
+import { ConfigFields } from './config.js'
 
-class ModuleInstance extends InstanceBase {
+class KDS7Instance extends InstanceBase {
+
 	constructor(internal) {
 		super(internal)
 	}
@@ -17,10 +19,47 @@ class ModuleInstance extends InstanceBase {
 		this.updateActions() // export actions
 		this.updateFeedbacks() // export feedbacks
 		this.updateVariableDefinitions() // export variable definitions
+
+		this.init_tcp()
 	}
+
+	init_tcp() {
+		if (this.socket) {
+			this.socket.destroy()
+			delete this.socket
+		}
+
+		this.updateStatus(InstanceStatus.Connecting)
+
+		if (this.config.host) {
+			this.socket = new TCPHelper(this.config.host, this.config.port)
+
+			this.socket.on('status_change', (status, message) => {
+				this.updateStatus(status, message)
+			})
+
+			this.socket.on('error', (err) => {
+				this.updateStatus(InstanceStatus.ConnectionFailure, err.message)
+				console.log('error', 'Network error: ' + err.message)
+			})
+
+			this.socket.on('data', (data) => {
+				let dataResponse = data.toString()
+				console.log('Data response:', dataResponse)
+				this.setVariableValues({ tcp_response: dataResponse })
+			})
+		} else {
+			this.updateStatus(InstanceStatus.BadConfig)
+		}
+	}
+
+
 	// When module gets deleted
 	async destroy() {
-		this.log('debug', 'destroy')
+		if (this.socket !== undefined) {
+			this.socket.destroy()
+			delete this.socket
+		}
 	}
 
 	async configUpdated(config) {
@@ -29,35 +68,26 @@ class ModuleInstance extends InstanceBase {
 
 	// Return config fields for web config
 	getConfigFields() {
-		return [
-			{
-				type: 'textinput',
-				id: 'host',
-				label: 'Target IP',
-				width: 8,
-				regex: Regex.IP,
-			},
-			{
-				type: 'textinput',
-				id: 'port',
-				label: 'Target Port',
-				width: 4,
-				regex: Regex.PORT,
-			},
-		]
+		return ConfigFields
+	}
+
+	init_tcp_variables() {
+		this.setVariableDefinitions([{ name: 'Last TCP Response', variableId: 'tcp_response' }])
+
+		this.setVariableValues({ tcp_response: '' })
 	}
 
 	updateActions() {
-		UpdateActions(this)
+		this.setActionDefinitions(getActionDefinitions(this))
 	}
 
 	updateFeedbacks() {
-		UpdateFeedbacks(this)
+		this.setFeedbackDefinitions(getFeedBackDefinitions(this))
 	}
 
 	updateVariableDefinitions() {
-		UpdateVariableDefinitions(this)
+		this.setVariableDefinitions(getVariableDefinitions(this))
 	}
 }
 
-runEntrypoint(ModuleInstance, UpgradeScripts)
+runEntrypoint(KDS7Instance, UpgradeScripts)

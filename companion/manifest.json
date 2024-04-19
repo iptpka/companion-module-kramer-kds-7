@@ -5,12 +5,12 @@
 	"description": "Companion module for Kramer KDS-7 series",
 	"version": "0.1.0",
 	"license": "MIT",
-	"repository": "git+https://github.com/bitfocus/companion-module-your-module-name.git",
-	"bugs": "https://github.com/bitfocus/companion-module-your-module-name/issues",
+	"repository": "git+https://github.com/bitfocus/companion-module-kramer-kds-7.git",
+	"bugs": "https://github.com/bitfocus/companion-module-kramer-kds-7/issues",
 	"maintainers": [
 		{
 			"name": "Tuomas Järvenkylä",
-			"email": "Your email"
+			"email": "tuomasjarvenkyla@gmail.com"
 		}
 	],
 	"runtime": {
