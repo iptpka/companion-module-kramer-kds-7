@@ -1,73 +1,94 @@
-import { InstanceBase, Regex, runEntrypoint, InstanceStatus, TCPHelper } from '@companion-module/base'
+import { InstanceBase, runEntrypoint, InstanceStatus, TCPHelper } from '@companion-module/base'
 import { default as UpgradeScripts } from './upgrades.js'
 import { getActionDefinitions } from './actions.js'
 import { getFeedBackDefinitions } from './feedbacks.js'
 import { getVariableDefinitions } from './variables.js'
 import { ConfigFields } from './config.js'
+import { increaseIP } from './utils.js'
 
 class KDS7Instance extends InstanceBase {
 
 	constructor(internal) {
 		super(internal)
+		this.encoderSockets = []
+		this.decoderSockets = []
 	}
-
+	
 	async init(config) {
-		this.config = config
-
+		this.configUpdated(config)
 		this.updateStatus(InstanceStatus.Ok)
-
-		this.updateActions() // export actions
-		this.updateFeedbacks() // export feedbacks
-		this.updateVariableDefinitions() // export variable definitions
-
-		this.init_tcp()
+		this.updateActions()
+		this.updateFeedbacks()
+		this.updateVariableDefinitions()
 	}
 
-	init_tcp() {
-		if (this.socket) {
-			this.socket.destroy()
-			delete this.socket
-		}
+	createSockets(addresses) {
+		let socketArray = []
+		addresses.forEach(address => {
+			const socket = new TCPHelper(address, this.config.port)
 
-		this.updateStatus(InstanceStatus.Connecting)
-
-		if (this.config.host) {
-			this.socket = new TCPHelper(this.config.host, this.config.port)
-
-			this.socket.on('status_change', (status, message) => {
+			socket.on('status_change', (status, message) => {
 				this.updateStatus(status, message)
 			})
-
-			this.socket.on('error', (err) => {
+	
+			socket.on('error', (err) => {
 				this.updateStatus(InstanceStatus.ConnectionFailure, err.message)
 				console.log('error', 'Network error: ' + err.message)
 			})
-
-			this.socket.on('data', (data) => {
+	
+			socket.on('data', (data) => {
 				let dataResponse = data.toString()
 				console.log('Data response:', dataResponse)
 				this.setVariableValues({ tcp_response: dataResponse })
 			})
-		} else {
-			this.updateStatus(InstanceStatus.BadConfig)
-		}
+
+			socketArray.push(socket)
+		});
+		return socketArray
 	}
 
+	async init_tcp() {
+		this.updateStatus(InstanceStatus.Connecting)
+		this.encoderSockets.forEach(socket => {
+			if (socket) {
+				socket.destroy()
+			}
+		});
+		this.decoderSockets.forEach(socket => {
+			if (socket) {
+				socket.destroy()
+			}
+		});
+		this.decoderSockets.length = this.encoderSockets.length = 0
 
-	// When module gets deleted
+		let encoderAddresses = [...Array(this.config.encoderamount).keys()].map((x) => increaseIP(this.config.encoderaddress, x))
+		let decoderAddresses = [...Array(this.config.decoderamount).keys()].map((x) => increaseIP(this.config.decoderaddress, x))
+		this.encoderSockets = this.createSockets(encoderAddresses)
+		this.decoderSockets = this.createSockets(decoderAddresses)
+	}
+
 	async destroy() {
-		if (this.socket !== undefined) {
-			this.socket.destroy()
-			delete this.socket
-		}
+		this.encoderSockets.forEach(socket =>{
+			if (socket !== undefined) {
+				socket.destroy()
+			}
+		});
+		this.decoderSockets.forEach(socket =>{
+			if (socket !== undefined) {
+				socket.destroy()
+			}
+		});
+		this.encoderSockets.length = this.decoderSockets = 0
 	}
 
 	async configUpdated(config) {
+
 		this.config = config
+		this.init_tcp()
 	}
 
-	// Return config fields for web config
 	getConfigFields() {
+
 		return ConfigFields
 	}
 
