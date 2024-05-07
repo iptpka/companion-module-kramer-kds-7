@@ -9,6 +9,13 @@ export const ConfigFields = [
         regex: Regex.PORT,
     },
     {
+        type: 'checkbox',
+        id: 'videowall',
+        label: 'Video wall',
+        default: true,
+        width: 4,
+    },
+    {
         type: 'static-text',
         id: 'separator1',
         label: ' ',

@@ -22,11 +22,12 @@ class KDS7Instance extends InstanceBase {
 		this.updateVariableDefinitions()
 	}
 
-	createSockets(addresses) {
+	createSockets(addresses, devicetype) {
 		let socketArray = []
-		addresses.forEach(address => {
+		addresses.forEach((address, i) => {
 			const socket = new TCPHelper(address, this.config.port)
-
+			socket.label = `${devicetype}${i+1}`
+			
 			socket.on('status_change', (status, message) => {
 				this.updateStatus(status, message)
 			})
@@ -38,7 +39,7 @@ class KDS7Instance extends InstanceBase {
 	
 			socket.on('data', (data) => {
 				let dataResponse = data.toString()
-				console.log('Data response:', dataResponse)
+				console.log(`Response from ${socket.label}:`, dataResponse)
 				this.setVariableValues({ tcp_response: dataResponse })
 			})
 
@@ -48,6 +49,8 @@ class KDS7Instance extends InstanceBase {
 	}
 
 	async init_tcp() {
+		if (!this.config.port) return
+		
 		this.updateStatus(InstanceStatus.Connecting)
 		this.encoderSockets.forEach(socket => {
 			if (socket) {
@@ -63,8 +66,8 @@ class KDS7Instance extends InstanceBase {
 
 		let encoderAddresses = [...Array(this.config.encoderamount).keys()].map((x) => increaseIP(this.config.encoderaddress, x))
 		let decoderAddresses = [...Array(this.config.decoderamount).keys()].map((x) => increaseIP(this.config.decoderaddress, x))
-		this.encoderSockets = this.createSockets(encoderAddresses)
-		this.decoderSockets = this.createSockets(decoderAddresses)
+		this.encoderSockets = this.createSockets(encoderAddresses, "encoder")
+		this.decoderSockets = this.createSockets(decoderAddresses, "decoder")
 	}
 
 	async destroy() {
@@ -82,13 +85,15 @@ class KDS7Instance extends InstanceBase {
 	}
 
 	async configUpdated(config) {
-
 		this.config = config
-		this.init_tcp()
+		if (config.port) {
+			this.init_tcp()
+			this.updateActions()
+			this.updateVariableDefinitions()
+		}
 	}
 
 	getConfigFields() {
-
 		return ConfigFields
 	}
 
