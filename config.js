@@ -11,9 +11,27 @@ export const ConfigFields = [
     {
         type: 'checkbox',
         id: 'videowall',
-        label: 'Video wall',
+        label: 'Is this module used for controlling a video wall',
         default: true,
         width: 4,
+    },
+    {
+        type: 'number',
+        id: 'videowallcolumns',
+        label: 'Columns in video wall',
+        default: 1,
+        min: 1,
+        max: 256,
+        isVisible: (options) => options.videowall
+    },
+    {
+        type: 'number',
+        id: 'videowallrows',
+        label: 'Rows in video wall',
+        default: 1,
+        min: 1,
+        max: 256,
+        isVisible: (options) => options.videowall
     },
     {
         type: 'static-text',

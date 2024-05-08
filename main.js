@@ -85,6 +85,12 @@ class KDS7Instance extends InstanceBase {
 	}
 
 	async configUpdated(config) {
+		if (config.videowall) {
+			if (config.decoderamount != config.videowallrows * config.videowallcolumns) {
+				this.updateStatus(InstanceStatus.BadConfig)
+				console.log("Bad config! Rows and columns don't match the amount of decoder devices.")
+			}
+		}
 		this.config = config
 		if (config.port) {
 			this.init_tcp()
