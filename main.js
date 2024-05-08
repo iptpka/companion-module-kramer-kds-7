@@ -5,6 +5,7 @@ import { getFeedBackDefinitions } from './feedbacks.js'
 import { getVariableDefinitions } from './variables.js'
 import { ConfigFields } from './config.js'
 import { increaseIP } from './utils.js'
+import { VideoWall } from './videowall.js'
 
 class KDS7Instance extends InstanceBase {
 
@@ -86,9 +87,13 @@ class KDS7Instance extends InstanceBase {
 
 	async configUpdated(config) {
 		if (config.videowall) {
-			if (config.decoderamount != config.videowallrows * config.videowallcolumns) {
+			const rows = config.videowallrows
+			const columns = config.videowallcolumns
+			if (config.decoderamount != rows * columns) {
 				this.updateStatus(InstanceStatus.BadConfig)
 				console.log("Bad config! Rows and columns don't match the amount of decoder devices.")
+			} else {
+				this.videowall = new VideoWall(rows, columns, config.encoderamount) 
 			}
 		}
 		this.config = config

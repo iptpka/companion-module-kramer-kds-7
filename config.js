@@ -17,8 +17,8 @@ export const ConfigFields = [
     },
     {
         type: 'number',
-        id: 'videowallcolumns',
-        label: 'Columns in video wall',
+        id: 'videowallrows',
+        label: 'Rows in video wall',
         default: 1,
         min: 1,
         max: 256,
@@ -26,8 +26,8 @@ export const ConfigFields = [
     },
     {
         type: 'number',
-        id: 'videowallrows',
-        label: 'Rows in video wall',
+        id: 'videowallcolumns',
+        label: 'Columns in video wall',
         default: 1,
         min: 1,
         max: 256,
