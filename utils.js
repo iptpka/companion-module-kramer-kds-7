@@ -1,5 +1,5 @@
-export function increaseIP(IPAddress, amount) {
-    let split = IPAddress.split('.')
-    split[split.length - 1] = parseInt(split[split.length -1]) + amount
-    return split.join('.')
+export function increaseIP (IPAddress, amount) {
+	let split = IPAddress.split('.')
+	split[split.length - 1] = parseInt(split[split.length - 1]) + amount
+	return split.join('.')
 }

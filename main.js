@@ -8,14 +8,13 @@ import { increaseIP } from './utils.js'
 import { VideoWall } from './videowall.js'
 
 class KDS7Instance extends InstanceBase {
-
-	constructor(internal) {
+	constructor (internal) {
 		super(internal)
 		this.encoderSockets = []
 		this.decoderSockets = []
 	}
-	
-	async init(config) {
+
+	async init (config) {
 		this.configUpdated(config)
 		this.updateStatus(InstanceStatus.Ok)
 		this.updateActions()
@@ -23,21 +22,21 @@ class KDS7Instance extends InstanceBase {
 		this.updateVariableDefinitions()
 	}
 
-	createSockets(addresses, devicetype) {
+	createSockets (addresses, devicetype) {
 		let socketArray = []
 		addresses.forEach((address, i) => {
 			const socket = new TCPHelper(address, this.config.port)
-			socket.label = `${devicetype}${i+1}`
-			
+			socket.label = `${devicetype}${i + 1}`
+
 			socket.on('status_change', (status, message) => {
 				this.updateStatus(status, message)
 			})
-	
+
 			socket.on('error', (err) => {
 				this.updateStatus(InstanceStatus.ConnectionFailure, err.message)
 				console.log('error', 'Network error: ' + err.message)
 			})
-	
+
 			socket.on('data', (data) => {
 				let dataResponse = data.toString()
 				console.log(`Response from ${socket.label}:`, dataResponse)
@@ -45,47 +44,51 @@ class KDS7Instance extends InstanceBase {
 			})
 
 			socketArray.push(socket)
-		});
+		})
 		return socketArray
 	}
 
-	async init_tcp() {
+	async init_tcp () {
 		if (!this.config.port) return
-		
+
 		this.updateStatus(InstanceStatus.Connecting)
-		this.encoderSockets.forEach(socket => {
+		this.encoderSockets.forEach((socket) => {
 			if (socket) {
 				socket.destroy()
 			}
-		});
-		this.decoderSockets.forEach(socket => {
+		})
+		this.decoderSockets.forEach((socket) => {
 			if (socket) {
 				socket.destroy()
 			}
-		});
+		})
 		this.decoderSockets.length = this.encoderSockets.length = 0
 
-		let encoderAddresses = [...Array(this.config.encoderamount).keys()].map((x) => increaseIP(this.config.encoderaddress, x))
-		let decoderAddresses = [...Array(this.config.decoderamount).keys()].map((x) => increaseIP(this.config.decoderaddress, x))
-		this.encoderSockets = this.createSockets(encoderAddresses, "encoder")
-		this.decoderSockets = this.createSockets(decoderAddresses, "decoder")
+		let encoderAddresses = [...Array(this.config.encoderamount).keys()].map((x) =>
+			increaseIP(this.config.encoderaddress, x)
+		)
+		let decoderAddresses = [...Array(this.config.decoderamount).keys()].map((x) =>
+			increaseIP(this.config.decoderaddress, x)
+		)
+		this.encoderSockets = this.createSockets(encoderAddresses, 'encoder')
+		this.decoderSockets = this.createSockets(decoderAddresses, 'decoder')
 	}
 
-	async destroy() {
-		this.encoderSockets.forEach(socket =>{
+	async destroy () {
+		this.encoderSockets.forEach((socket) => {
 			if (socket !== undefined) {
 				socket.destroy()
 			}
-		});
-		this.decoderSockets.forEach(socket =>{
+		})
+		this.decoderSockets.forEach((socket) => {
 			if (socket !== undefined) {
 				socket.destroy()
 			}
-		});
+		})
 		this.encoderSockets.length = this.decoderSockets = 0
 	}
 
-	async configUpdated(config) {
+	async configUpdated (config) {
 		if (config.videowall) {
 			const rows = config.videowallrows
 			const columns = config.videowallcolumns
@@ -93,7 +96,7 @@ class KDS7Instance extends InstanceBase {
 				this.updateStatus(InstanceStatus.BadConfig)
 				console.log("Bad config! Rows and columns don't match the amount of decoder devices.")
 			} else {
-				this.videowall = new VideoWall(rows, columns, config.encoderamount) 
+				this.videowall = new VideoWall(rows, columns, config.encoderamount)
 			}
 		}
 		this.config = config
@@ -104,25 +107,25 @@ class KDS7Instance extends InstanceBase {
 		}
 	}
 
-	getConfigFields() {
+	getConfigFields () {
 		return ConfigFields
 	}
 
-	init_tcp_variables() {
+	init_tcp_variables () {
 		this.setVariableDefinitions([{ name: 'Last TCP Response', variableId: 'tcp_response' }])
 
 		this.setVariableValues({ tcp_response: '' })
 	}
 
-	updateActions() {
+	updateActions () {
 		this.setActionDefinitions(getActionDefinitions(this))
 	}
 
-	updateFeedbacks() {
+	updateFeedbacks () {
 		this.setFeedbackDefinitions(getFeedBackDefinitions(this))
 	}
 
-	updateVariableDefinitions() {
+	updateVariableDefinitions () {
 		this.setVariableDefinitions(getVariableDefinitions(this))
 	}
 }
