@@ -96,7 +96,7 @@ class KDS7Instance extends InstanceBase {
 				this.updateStatus(InstanceStatus.BadConfig)
 				console.log("Bad config! Rows and columns don't match the amount of decoder devices.")
 			} else {
-				this.videowall = new VideoWall(rows, columns, config.encoderamount)
+				this.videowall = new VideoWall(rows, columns)
 			}
 		}
 		this.config = config

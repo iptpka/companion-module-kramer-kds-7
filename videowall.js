@@ -129,7 +129,7 @@ class Subset {
 }
 
 //Contains the wall partition (how the wall is divided into subsets) and dimensions of  the wall
-class VideoWall {
+export class VideoWall {
 	constructor (rows, columns) {
 		this.rows = rows
 		this.columns = columns
