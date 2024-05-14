@@ -149,7 +149,7 @@ export class VideoWall {
 			(y) => (y = [...Array(columns).keys()].map((x) => (x = new Element(x, y, i++))))
 		)
 		return wall
-	}
+		}
 
 	addSubset () {
 		const subset = new Subset(this.subsets.length + 1, this.columns, this.rows)
@@ -164,5 +164,9 @@ export class VideoWall {
 		this.wall = this.newWall(rows, columns)
 		this.subsets.length = 0
 		this.subsets.push(new Subset(1, columns, rows, this.wall))
+	}
+	
+	removeEmptySubsets() {
+		this.subsets = this.subsets.filter(subset => subset.elements.length > 0)
 	}
 }
