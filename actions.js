@@ -46,7 +46,7 @@ export function getActionDefinitions (self) {
 					width: 12,
 					isVisibleData: PROTOCOL3000COMMANDS,
 					//is visible only for commands that have parameters
-					isVisible: ((options, commands) => !options.freeinput && commands.filter((command) => command.id == options.commandselect).at(0).parameters !== null)
+					//isVisible: ((options, commands) => !options.freeinput && commands.filter((command) => command.id == options.commandselect).at(0).parameters !== null)
 				},
 				{
 					id: 'command',
@@ -133,7 +133,7 @@ export function getActionDefinitions (self) {
 					useVariables: true,
 					width: 12,
 					isVisibleData: PROTOCOL3000COMMANDS,
-					isVisible: ((options, data) => !options.freeinput && data.filter((entry) => entry.id == options.commandselect).at(0).parameters !== null)
+					//isVisible: ((options, data) => !options.freeinput && data.filter((entry) => entry.id == options.commandselect).at(0).parameters !== null)
 				},
 				{
 					id: 'command',
