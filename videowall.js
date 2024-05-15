@@ -168,5 +168,8 @@ export class VideoWall {
 	
 	removeEmptySubsets() {
 		this.subsets = this.subsets.filter(subset => subset.elements.length > 0)
+		this.subsets.forEach((subset, index) => {
+			subset.id = index + 1
+		})
 	}
 }

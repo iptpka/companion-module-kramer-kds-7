@@ -198,9 +198,9 @@ class KDS7Instance extends InstanceBase {
 					})
 			})
 			this.videowall.removeEmptySubsets()
-			console.log(this.videowall)
-			console.log(this.videowall.elements)
-			console.log(this.videowall.subsets)
+			// console.log(this.videowall)
+			// console.log(this.videowall.elements)
+			// console.log(this.videowall.subsets)
 		})
 
 		// Clean up all the sockets
