@@ -29,17 +29,8 @@ class KDS7Instance extends InstanceBase {
 			socket.label = `${devicetype}${i + 1}`
 			socket.id = i + 1
 
-			socket.statusOk = {}
-			socket.statusOk.promise = new Promise((resolve, reject) => {
-				socket.statusOk.resolve = resolve
-				socket.statusOk.reject = reject
-			})
-
 			socket.on('status_change', (status, message) => {
 				this.updateStatus(status, message)
-				if (status === 'ok') {
-					socket.statusOk.resolve([status, message])
-				}
 			})
 
 			socket.on('error', (err) => {
@@ -93,7 +84,13 @@ class KDS7Instance extends InstanceBase {
 	async destroy () {
 		this.destroySockets()
 	}
-
+	
+	/**
+	 * Automatically detects the current video wall setup.
+	 * Queries all the decoders for their VIDEO-WALL-SETUP and VIEW-MOD values
+	 * to determine how the video wall is partitioned into different views
+	 * and builds a matching VideoWall instance.
+	 */
 	async updateVideoWallConfig () {
 		const rows = this.config.videowallrows
 		const columns = this.config.videowallcolumns
@@ -106,11 +103,26 @@ class KDS7Instance extends InstanceBase {
 
 		this.videowall = new VideoWall(rows, columns)
 		const waitForConnections = this.decoderSockets.map((socket) => {
+			socket.statusOk = {}
+			socket.statusOk.promise = new Promise((resolve, reject) => {
+				socket.statusOk.resolve = resolve
+				socket.statusOk.reject = reject
+			})
+			socket.removeAllListeners('status_change')
+			socket.on('status_change', (status, message) => {
+				this.updateStatus(status, message)
+				if (status === 'ok') {
+					socket.statusOk.resolve([status, message])
+				}
+			})
 			return socket.statusOk.promise
 		})
 
 		let waitForResponses = []
 
+		/* Query the area dimensions and outputIds from all decoders to determine how the video wall
+		 * is partitioned.
+		 */
 		await Promise.all(waitForConnections).then((values) => {
 			this.decoderSockets.forEach((socket) => {
 				socket.removeAllListeners('data')
@@ -144,8 +156,12 @@ class KDS7Instance extends InstanceBase {
 			})
 		})
 
-		Promise.all(waitForResponses).then((values) => {
-			console.log(values)
+		/* Determines the amount of separate areas/subsets in the video wall.
+		 * Each new set of dimension values in a VIEW-MOD response from a decoder is a new area/subset.
+		 * If a subset already exists for a certain set of dimensions, check if that subset already contains
+		 * the current decoders VIDEO-WALL-SETUP outputId value. If not, add the element/decoder to that set, else make a new subset for it.
+		 */
+		await Promise.all(waitForResponses).then((values) => {
 			let subsets = {}
 			values.forEach((value) => {
 				const dimensions = value.responses['VIEW-MOD']
@@ -154,6 +170,7 @@ class KDS7Instance extends InstanceBase {
 				}
 				const outputId = value.responses['VIDEO-WALL-SETUP'].split(',')[0]
 				let i = 0
+				// Loop until a subset is found/created that doesn't already contain current outputId
 				while (true) {
 					if (subsets[key(i)] === undefined) {
 						subsets[key(i)] = [{ [outputId]: value.id }]
@@ -167,9 +184,10 @@ class KDS7Instance extends InstanceBase {
 				}
 			})
 
+			// Generate a new video wall subset for each unique area detected and add all its elements to it.
 			Object.values(subsets).forEach((value) => {
 				const subset = this.videowall.addSubset()
-				
+
 				value
 					.map((value) => {
 						return Object.values(value)
@@ -180,6 +198,26 @@ class KDS7Instance extends InstanceBase {
 					})
 			})
 			this.videowall.removeEmptySubsets()
+			console.log(this.videowall)
+			console.log(this.videowall.elements)
+			console.log(this.videowall.subsets)
+		})
+
+		// Clean up all the sockets
+		this.decoderSockets.forEach((socket) => {
+			delete socket.responses
+			delete socket.responseWaiter
+			delete socket.statusOk
+			socket.removeAllListeners('status_change')
+			socket.on('status_change', (status, message) => {
+				this.updateStatus(status, message)
+			})
+			socket.removeAllListeners('data')
+			socket.on('data', (data) => {
+				let dataResponse = data.toString()
+				console.log(`Response from ${socket.label}:`, dataResponse)
+				this.setVariableValues({ tcp_response: dataResponse })
+			})
 		})
 	}
 
