@@ -69,7 +69,6 @@ class Subset {
 		} else {
 			let bounds = { x1: this.maxX, y1: this.maxY, x2: 0, y2: 0 }
 			this.elements.forEach((element) => {
-				//console.log(element)
 				bounds.x1 = Math.min(element.x, bounds.x1)
 				bounds.x2 = Math.max(element.x, bounds.x2)
 				bounds.y1 = Math.min(element.y, bounds.y1)
@@ -149,7 +148,7 @@ export class VideoWall {
 			(y) => (y = [...Array(columns).keys()].map((x) => (x = new Element(x, y, i++))))
 		)
 		return wall
-		}
+	}
 
 	addSubset () {
 		const subset = new Subset(this.subsets.length + 1, this.columns, this.rows)
@@ -161,15 +160,18 @@ export class VideoWall {
 		this.subsets.forEach((subset) => {
 			subset.clear()
 		})
-		this.wall = this.newWall(rows, columns)
+		this.wall = this.newWall(this.rows, this.columns)
 		this.subsets.length = 0
-		this.subsets.push(new Subset(1, columns, rows, this.wall))
+		this.subsets = [new Subset(1, this.columns, this.rows, this.elements)]
 	}
-	
-	removeEmptySubsets() {
-		this.subsets = this.subsets.filter(subset => subset.elements.length > 0)
+
+	removeEmptySubsets () {
+		const hasEmpties = this.subsets.some((subset) => subset.elements.length === 0)
+		if (!hasEmpties) return false
+		this.subsets = this.subsets.filter((subset) => subset.elements.length > 0)
 		this.subsets.forEach((subset, index) => {
 			subset.id = index + 1
 		})
+		return true
 	}
 }

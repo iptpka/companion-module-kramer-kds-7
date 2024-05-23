@@ -4,14 +4,24 @@ import { getActionDefinitions } from './actions.js'
 import { getFeedBackDefinitions } from './feedbacks.js'
 import { getVariableDefinitions } from './variables.js'
 import { ConfigFields } from './config.js'
-import { increaseIP } from './utils.js'
+import { incrementedIP } from './utils.js'
 import { VideoWall } from './videowall.js'
 
 class KDS7Instance extends InstanceBase {
+	handleDataResponse (socket, data) {
+			const dataResponse = data.toString()
+			console.log(`Response from ${socket.label}:`, dataResponse)
+			this.setVariableValues({ tcp_response: dataResponse })
+	}
+	
 	constructor (internal) {
 		super(internal)
 		this.encoderSockets = []
 		this.decoderSockets = []
+	}
+
+	get sockets () {
+		return this.encoderSockets.concat(this.decoderSockets)
 	}
 
 	async init (config) {
@@ -38,11 +48,7 @@ class KDS7Instance extends InstanceBase {
 				console.log('error', 'Network error: ' + err.message)
 			})
 
-			socket.on('data', (data) => {
-				let dataResponse = data.toString()
-				console.log(`Response from ${socket.label}:`, dataResponse)
-				this.setVariableValues({ tcp_response: dataResponse })
-			})
+			socket.on('data', (data) => this.handleDataResponse(socket, data))
 
 			socketArray.push(socket)
 		})
@@ -50,21 +56,83 @@ class KDS7Instance extends InstanceBase {
 	}
 
 	async init_tcp () {
-		if (!this.config.port) return
-
-		this.responses = []
-
 		this.updateStatus(InstanceStatus.Connecting)
 		this.destroySockets()
 
+		//[...Array(n).keys()] generates a number range array from 0 to n-1: [0, 1, 2, ... n-1]
 		let encoderAddresses = [...Array(this.config.encoderamount).keys()].map((x) =>
-			increaseIP(this.config.encoderaddress, x)
+			incrementedIP(this.config.encoderaddress, x)
 		)
 		let decoderAddresses = [...Array(this.config.decoderamount).keys()].map((x) =>
-			increaseIP(this.config.decoderaddress, x)
+			incrementedIP(this.config.decoderaddress, x)
 		)
 		this.encoderSockets = this.createSockets(encoderAddresses, 'encoder')
 		this.decoderSockets = this.createSockets(decoderAddresses, 'decoder')
+	}
+
+	async verifyConnections () {
+		let waitForConnections = []
+		this.sockets.forEach((socket) => {
+			socket.statusOk = {}
+			socket.statusOk.promise = new Promise((resolve, reject) => {
+				socket.statusOk.resolve = resolve
+				socket.statusOk.reject = reject
+			})
+			socket.removeAllListeners('status_change')
+			socket.on('status_change', (status, message) => {
+				this.updateStatus(status, message)
+				if (status === 'ok') {
+					socket.statusOk.resolve([status, message])
+				}
+			})
+			waitForConnections.push(socket.statusOk.promise)
+		})
+		await Promise.all(waitForConnections).then(() => {
+			console.log('All KDS devices connected')
+			this.sockets.forEach((socket) => {
+				delete socket.statusOk
+				socket.removeAllListeners('status_change')
+				socket.on('status_change', (status, message) => {
+					this.updateStatus(status, message)
+				})
+			})
+		})
+	}
+
+	//This should probably be converted to a generic method for querying with a promise.
+	async queryChannelIds () {
+		let waitForResponses = []
+		this.encoderSockets.forEach((socket) => {
+			socket.removeAllListeners('data')
+			socket.responseWaiter = {}
+
+			socket.responseWaiter.promise = new Promise((resolve, reject) => {
+				socket.responseWaiter.resolve = resolve
+				socket.responseWaiter.reject = reject
+			})
+
+			waitForResponses.push(socket.responseWaiter.promise)
+
+			socket.on('data', (data) => {
+				if (!data.toString().includes('KDS-DEFINE-CHANNEL')) {
+					return
+				}
+				const dataResponse = data.toString()
+				socket.channelId = parseInt(dataResponse.slice(dataResponse.indexOf(' '), dataResponse.indexOf('\r')))
+				socket.responseWaiter.resolve()
+			})
+
+			socket.send('#KDS-DEFINE-CHANNEL?\r')
+		})
+
+		await Promise.all(waitForResponses)
+
+		// Clean up encoder sockets
+		this.encoderSockets.forEach((socket) => {
+			delete socket.responseWaiter
+			socket.removeAllListeners('data')
+			socket.on('data', (data) => this.handleDataResponse(socket, data))
+		})
 	}
 
 	destroySockets () {
@@ -84,9 +152,8 @@ class KDS7Instance extends InstanceBase {
 	async destroy () {
 		this.destroySockets()
 	}
-	
+
 	/**
-	 * Automatically detects the current video wall setup.
 	 * Queries all the decoders for their VIDEO-WALL-SETUP and VIEW-MOD values
 	 * to determine how the video wall is partitioned into different views
 	 * and builds a matching VideoWall instance.
@@ -102,135 +169,109 @@ class KDS7Instance extends InstanceBase {
 		}
 
 		this.videowall = new VideoWall(rows, columns)
-		const waitForConnections = this.decoderSockets.map((socket) => {
-			socket.statusOk = {}
-			socket.statusOk.promise = new Promise((resolve, reject) => {
-				socket.statusOk.resolve = resolve
-				socket.statusOk.reject = reject
-			})
-			socket.removeAllListeners('status_change')
-			socket.on('status_change', (status, message) => {
-				this.updateStatus(status, message)
-				if (status === 'ok') {
-					socket.statusOk.resolve([status, message])
-				}
-			})
-			return socket.statusOk.promise
-		})
-
-		let waitForResponses = []
 
 		/* Query the area dimensions and outputIds from all decoders to determine how the video wall
 		 * is partitioned.
 		 */
-		await Promise.all(waitForConnections).then((values) => {
-			this.decoderSockets.forEach((socket) => {
-				socket.removeAllListeners('data')
-				socket.responseWaiter = {}
-				socket.responses = {}
+		let waitForResponses = []
+		this.decoderSockets.forEach((socket) => {
+			socket.removeAllListeners('data')
+			socket.responseWaiter = {}
+			socket.responses = {}
 
-				socket.responseWaiter.promise = new Promise((resolve, reject) => {
-					socket.responseWaiter.resolve = resolve
-					socket.responseWaiter.reject = reject
-				})
-
-				waitForResponses.push(socket.responseWaiter.promise)
-
-				socket.on('data', (data) => {
-					if (!(data.toString().includes('VIEW-MOD') || data.toString().includes('VIDEO-WALL-SETUP'))) {
-						return
-					}
-					const dataResponse = data
-						.toString()
-						.slice(data.toString().indexOf('@') + 1)
-						.replace('\r\n', '')
-					const response = dataResponse.split(' ')
-					socket.responses[response[0]] = response[1]
-					if (Object.keys(socket.responses).length === 2) {
-						socket.responseWaiter.resolve({ id: socket.id, responses: socket.responses })
-					}
-				})
-
-				socket.send('#VIEW-MOD?\r')
-				socket.send('#VIDEO-WALL-SETUP?\r')
+			socket.responseWaiter.promise = new Promise((resolve, reject) => {
+				socket.responseWaiter.resolve = resolve
+				socket.responseWaiter.reject = reject
 			})
-		})
 
-		/* Determines the amount of separate areas/subsets in the video wall.
-		 * Each new set of dimension values in a VIEW-MOD response from a decoder is a new area/subset.
-		 * If a subset already exists for a certain set of dimensions, check if that subset already contains
-		 * the current decoders VIDEO-WALL-SETUP outputId value. If not, add the element/decoder to that set, else make a new subset for it.
-		 */
-		await Promise.all(waitForResponses).then((values) => {
-			let subsets = {}
-			values.forEach((value) => {
-				const dimensions = value.responses['VIEW-MOD']
-				const key = function (increment) {
-					return increment !== undefined && increment !== 0 ? `${dimensions}+${increment}` : dimensions
+			waitForResponses.push(socket.responseWaiter.promise)
+
+			socket.on('data', (data) => {
+				if (!(data.toString().includes('VIEW-MOD') || data.toString().includes('VIDEO-WALL-SETUP'))) {
+					return
 				}
-				const outputId = value.responses['VIDEO-WALL-SETUP'].split(',')[0]
+				const dataResponse = data
+					.toString()
+					.slice(data.toString().indexOf('@') + 1)
+					.replace('\r\n', '')
+				const response = dataResponse.split(' ')
+				socket.responses[response[0]] = response[1]
+				if (Object.keys(socket.responses).length === 2) {
+					socket.responseWaiter.resolve({ [socket.id]: socket.responses })
+				}
+			})
+
+			socket.send('#VIEW-MOD?\r')
+			socket.send('#VIDEO-WALL-SETUP?\r')
+		})
+		/* Determines the amount of separate areas/subsets in the video wall.
+		 * Each new set of dimension values in a VIEW-MOD response from a decoder is a new subset.
+		 * If a subset already exists for a certain set of dimensions, check if that subset already contains
+		 * the current decoders VIDEO-WALL-SETUP outputId value. If not, add the decoder to that set, else make a new subset for it.
+		 */
+		await Promise.all(waitForResponses).then((socketResponseArray) => {
+			let subsets = {}
+			socketResponseArray.forEach((socketResponse) => {
+				const [socketId, responses] = Object.entries(socketResponse).flat()
+				const dimensions = responses['VIEW-MOD']
+				function key (increment) {
+					return `${dimensions} + ${increment}`
+				}
+				const outputId = responses['VIDEO-WALL-SETUP'].split(',')[0]
 				let i = 0
-				// Loop until a subset is found/created that doesn't already contain current outputId
 				while (true) {
+					// New subset containing this decoder
 					if (subsets[key(i)] === undefined) {
-						subsets[key(i)] = [{ [outputId]: value.id }]
+						subsets[key(i)] = { [outputId]: socketId }
 						break
 					}
-					if (!Object.keys(subsets[key(i)]).includes(outputId)) {
-						subsets[key(i)].push({ [outputId]: value.id })
+					// New outputId for subset
+					if (subsets[key(i)][outputId] === undefined) {
+						subsets[key(i)][outputId] = socketId
 						break
 					}
+					// Key existed for this socket's outputId so it must belong to another subset with same dimensions
 					i++
 				}
 			})
+			
 
 			// Generate a new video wall subset for each unique area detected and add all its elements to it.
-			Object.values(subsets).forEach((value) => {
+			Object.values(subsets).forEach((IdPairs) => {
 				const subset = this.videowall.addSubset()
-
-				value
-					.map((value) => {
-						return Object.values(value)
-					})
-					.flat()
-					.forEach((id) => {
-						subset.addElement(this.videowall.elements.find((element) => element.index === id - 1))
-					})
+				Object.values(IdPairs).forEach((socketId) => {
+					subset.addElement(this.videowall.elements.find((element) => element.index === socketId - 1))
+				})
 			})
 			this.videowall.removeEmptySubsets()
-			// console.log(this.videowall)
-			// console.log(this.videowall.elements)
-			// console.log(this.videowall.subsets)
 		})
-
-		// Clean up all the sockets
+		// Clean up all the sockets.
 		this.decoderSockets.forEach((socket) => {
 			delete socket.responses
 			delete socket.responseWaiter
-			delete socket.statusOk
-			socket.removeAllListeners('status_change')
-			socket.on('status_change', (status, message) => {
-				this.updateStatus(status, message)
-			})
 			socket.removeAllListeners('data')
-			socket.on('data', (data) => {
-				let dataResponse = data.toString()
-				console.log(`Response from ${socket.label}:`, dataResponse)
-				this.setVariableValues({ tcp_response: dataResponse })
-			})
+			socket.on('data', (data) => this.handleDataResponse(socket, data))
 		})
+
+		this.setVariableValues({ selected_subset: this.videowall.subsets.at(0).id })
 	}
 
 	async configUpdated (config) {
+		if (config.port === undefined) {
+			this.updateStatus(InstanceStatus.BadConfig)
+			return
+		}
 		this.config = config
-
-		if (config.port === undefined) return
-
 		this.init_tcp()
-		this.updateActions()
 		this.updateVariableDefinitions()
-
-		if (config.videowall) this.updateVideoWallConfig()
+		await this.verifyConnections()
+		await this.queryChannelIds()
+		this.setVariableValues({ selected_channel: this.encoderSockets.at(0).channelId })
+		if (config.videowall) {
+			
+			this.updateVideoWallConfig()
+		}
+		this.updateActions()
 	}
 
 	getConfigFields () {
