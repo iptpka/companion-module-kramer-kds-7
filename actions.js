@@ -3,15 +3,42 @@ import { PROTOCOL3000COMMANDS } from './constants.js'
 export function getActionDefinitions (self) {
 	if (!self.config.port) return {}
 
-	function deviceChoiceArray (sockets) {
-		return [...Array(sockets.length).keys()].map((x) => (x = { id: x.toString(), label: Number(++x).toString() }))
-	}
-	const encoderChoices = deviceChoiceArray(self.encoderSockets)
-	const decoderChoices = deviceChoiceArray(self.decoderSockets)
+	const encoderChoices = self.encoderSockets.map((encoder) => ({
+		id: encoder.channelId,
+		label: `Channel ${encoder.channelId}`
+	}))
+	const decoderChoices = self.decoderSockets.map((decoder) => ({ id: decoder.id, label: decoder.id }))
 	const encoderDefault = encoderChoices.at(0).id
 	const decoderDefault = decoderChoices.at(0).id
-
+	const DirectionChoice = {
+		id: 'direction',
+		type: 'dropdown',
+		label: 'Direction',
+		choices: [
+			{ id: 'next', label: 'Next' },
+			{ id: 'previous', label: 'Previous' }
+		],
+		default: 'next'
+	}
 	let actions = {
+		debug_variable_tester: {
+			name: 'Debug variable tester',
+			options: [
+				{
+					id: 'text',
+					type: 'textinput',
+					label: 'Text',
+					default: '',
+					useVariables: true,
+					width: 12
+				}
+			],
+			callback: async (action) => {
+				if (!self.config.port) return
+				const cmd = await self.parseVariablesInString(action.options.text)
+				console.log(cmd)
+			}
+		},
 		send_command: {
 			name: 'Send Protocol 3000 Command',
 			options: [
@@ -25,18 +52,18 @@ export function getActionDefinitions (self) {
 				},
 				{
 					type: 'checkbox',
-					id: 'freeinput',
+					id: 'free_input',
 					label: 'Free input',
 					default: false,
 					width: 12
 				},
 				{
-					id: 'commandselect',
+					id: 'command_selection',
 					type: 'dropdown',
 					label: 'Command',
 					choices: PROTOCOL3000COMMANDS,
 					default: '#',
-					isVisible: (options) => !options.freeinput
+					isVisible: (options) => !options.free_input
 				},
 				{
 					id: 'parameters',
@@ -46,7 +73,7 @@ export function getActionDefinitions (self) {
 					useVariables: true,
 					width: 12,
 					isVisibleData: PROTOCOL3000COMMANDS,
-					isVisible: (options, commands) => !options.freeinput // && commands.filter((command) => command.id == options.commandselect).at(0).parameters !== null)
+					isVisible: (options) => !options.free_input
 				},
 				{
 					id: 'command',
@@ -55,10 +82,10 @@ export function getActionDefinitions (self) {
 					default: '',
 					useVariables: true,
 					width: 12,
-					isVisible: (options) => options.freeinput
+					isVisible: (options) => options.free_input
 				},
 				{
-					id: 'devicetype',
+					id: 'device_type',
 					type: 'dropdown',
 					label: 'Device type',
 					choices: [
@@ -70,10 +97,10 @@ export function getActionDefinitions (self) {
 				{
 					id: 'encoder',
 					type: 'dropdown',
-					label: 'Encoder number',
+					label: 'Encoder channel',
 					choices: encoderChoices,
 					default: encoderDefault,
-					isVisible: (options) => options.devicetype === 'encoder'
+					isVisible: (options) => options.device_type === 'encoder'
 				},
 				{
 					id: 'decoder',
@@ -81,18 +108,18 @@ export function getActionDefinitions (self) {
 					label: 'Decoder number',
 					choices: decoderChoices,
 					default: decoderDefault,
-					isVisible: (options) => options.devicetype === 'decoder'
+					isVisible: (options) => options.device_type === 'decoder'
 				}
 			],
 			callback: async (action) => {
 				if (!self.config.port) return
 				const options = action.options
-				const cmdContent = options.freeinput
+				const cmdContent = options.free_input
 					? `#${options.command}\r`
-					: `${options.commandselect} ${options.parameters}\r`
+					: `${options.command_selection} ${options.parameters}\r`
 				const cmd = await self.parseVariablesInString(cmdContent)
-				const sockets = options.devicetype == 'encoder' ? self.encoderSockets : self.decoderSockets
-				const deviceNumber = options.devicetype == 'encoder' ? options.encoder : options.decoder
+				const sockets = options.device_type == 'encoder' ? self.encoderSockets : self.decoderSockets
+				const deviceNumber = options.device_type == 'encoder' ? options.encoder : options.decoder
 				if (sockets !== undefined && sockets.at(parseInt(deviceNumber)).isConnected) {
 					let socket = sockets.at(parseInt(deviceNumber))
 					console.log(`Sending command to ${socket.label}:`, cmd)
@@ -115,18 +142,18 @@ export function getActionDefinitions (self) {
 				},
 				{
 					type: 'checkbox',
-					id: 'freeinput',
+					id: 'free_input',
 					label: 'Free input',
 					default: false,
 					width: 12
 				},
 				{
-					id: 'commandselect',
+					id: 'command_selection',
 					type: 'dropdown',
 					label: 'Command',
 					choices: PROTOCOL3000COMMANDS,
 					default: '#',
-					isVisible: (options) => !options.freeinput
+					isVisible: (options) => !options.free_input
 				},
 				{
 					id: 'parameters',
@@ -136,7 +163,7 @@ export function getActionDefinitions (self) {
 					useVariables: true,
 					width: 12,
 					isVisibleData: PROTOCOL3000COMMANDS,
-					isVisible: (options, data) => !options.freeinput // && data.filter((entry) => entry.id == options.commandselect).at(0).parameters !== null)
+					isVisible: (options) => !options.free_input
 				},
 				{
 					id: 'command',
@@ -145,10 +172,10 @@ export function getActionDefinitions (self) {
 					default: '',
 					useVariables: true,
 					width: 12,
-					isVisible: (options) => options.freeinput
+					isVisible: (options) => options.free_input
 				},
 				{
-					id: 'devicetype',
+					id: 'device_type',
 					type: 'dropdown',
 					label: 'Device type',
 					choices: [
@@ -161,12 +188,12 @@ export function getActionDefinitions (self) {
 			callback: async (action) => {
 				if (!self.config.port) return
 				const options = action.options
-				const cmdContent = options.freeinput
+				const cmdContent = options.free_input
 					? `#${options.command}\r`
-					: `${options.commandselect} ${options.parameters}\r`
+					: `${options.command_selection} ${options.parameters}\r`
 				const cmd = await self.parseVariablesInString(cmdContent)
-				const sockets = options.devicetype == 'encoder' ? self.encoderSockets : self.decoderSockets
-				console.log(`Broadcasting to all ${options.devicetype}s command:`, cmd)
+				const sockets = options.device_type == 'encoder' ? self.encoderSockets : self.decoderSockets
+				console.log(`Broadcasting to all ${options.device_type}s command:`, cmd)
 				sockets.forEach((socket) => {
 					if (!socket.isConnected) {
 						console.log(`Socket for ${socket.label} not connected!`)
@@ -178,9 +205,8 @@ export function getActionDefinitions (self) {
 		}
 	}
 
-	if (self.config.videowall) {
+	if (self.config.videowall && self.videowall !== undefined) {
 		function subsetChoiceArray () {
-			if (self.videowall === undefined) return [{ id: '0', label: 'video wall undefined' }]
 			const subsets = self.videowall.subsets
 			return [...Array(self.videowall.subsets.length).keys()].map((x) => {
 				const subset = subsets.at(x)
@@ -188,7 +214,10 @@ export function getActionDefinitions (self) {
 			})
 		}
 		const subsetChoices = subsetChoiceArray()
+		const subsetChoicesAddNew = subsetChoices.concat({ id: 'new', label: 'Add into new subset' })
+		subsetChoicesAddNew.push({ id: 'latest', label: 'Newest created subset' })
 		const defaultSubset = subsetChoices.at(0).id
+
 		actions.subset_multicast = {
 			name: 'Multicast Protocol 3000 Command to Subset',
 			options: [
@@ -202,18 +231,18 @@ export function getActionDefinitions (self) {
 				},
 				{
 					type: 'checkbox',
-					id: 'freeinput',
+					id: 'free_input',
 					label: 'Free input',
 					default: false,
 					width: 12
 				},
 				{
-					id: 'commandselect',
+					id: 'command_selection',
 					type: 'dropdown',
 					label: 'Command',
 					choices: PROTOCOL3000COMMANDS,
 					default: '#',
-					isVisible: (options) => !options.freeinput
+					isVisible: (options) => !options.free_input
 				},
 				{
 					id: 'parameters',
@@ -223,7 +252,7 @@ export function getActionDefinitions (self) {
 					useVariables: true,
 					width: 12,
 					isVisibleData: PROTOCOL3000COMMANDS,
-					isVisible: (options, data) => !options.freeinput // && data.filter((entry) => entry.id == options.commandselect).at(0).parameters !== null)
+					isVisible: (options) => !options.free_input
 				},
 				{
 					id: 'command',
@@ -232,24 +261,31 @@ export function getActionDefinitions (self) {
 					default: '',
 					useVariables: true,
 					width: 12,
-					isVisible: (options) => options.freeinput
+					isVisible: (options) => options.free_input
 				},
 				{
-					id: 'subsetselect',
+					type: 'checkbox',
+					id: 'use_current',
+					label: 'Use currently selected subset',
+					default: true
+				},
+				{
+					id: 'subset_selection',
 					type: 'dropdown',
 					label: 'Subset',
 					choices: subsetChoices,
-					default: defaultSubset
+					default: defaultSubset,
+					isVisible: (options) => !options.use_current
 				}
 			],
 			callback: async (action) => {
 				const options = action.options
-				if (!self.config.port || options.subsetselect === undefined) return
-				const cmdContent = options.freeinput
+				const cmdContent = options.free_input
 					? `#${options.command}\r`
-					: `${options.commandselect} ${options.parameters}\r`
+					: `${options.command_selection} ${options.parameters}\r`
 				const cmd = await self.parseVariablesInString(cmdContent)
-				const subset = self.videowall.subsets.find((subset) => subset.id === options.subsetselect)
+				const selectionId = options.use_current ? self.getVariableValue('selected_subset') : options.subset_selection
+				const subset = self.videowall.subsets.find((subset) => subset.id === selectionId)
 				console.log(`Multicasting to all decoders in subset ${subset.id} command:`, cmd)
 
 				subset.elements.forEach((element) => {
@@ -258,7 +294,7 @@ export function getActionDefinitions (self) {
 						console.log(`Socket for ${socket.label} not connected!`)
 						return
 					}
-					socket.send(cmd)
+					socket.send(cmd.replace('<Id>', element.outputId))
 				})
 			}
 		}
@@ -269,15 +305,16 @@ export function getActionDefinitions (self) {
 					type: 'static-text',
 					id: 'title',
 					label: 'Information',
-					value:
-						"Add a decoder to a subset of the module's internal video wall model. This action does NOT send any commands by itself.",
+					value: `Add a decoder to a subset of the module's internal video wall model. This action does NOT send any commands by itself. 
+						Select 'Add into new subset' from the dropdown to create a new subset and add the decoder into it.
+						The 'Newest created subset' option can be used to chain together actions where the first one creates a new subset and the others are added into that.`,
 					width: 12
 				},
 				{
-					id: 'subsetselect',
+					id: 'subset_selection',
 					type: 'dropdown',
 					label: 'Subset',
-					choices: subsetChoices,
+					choices: subsetChoicesAddNew,
 					default: defaultSubset
 				},
 				{
@@ -289,12 +326,247 @@ export function getActionDefinitions (self) {
 				}
 			],
 			callback: async (action) => {
-				console.log(decoderChoices)
 				const options = action.options
-				if (!self.config.port || options.subsetselect === undefined) return
-				const subset = self.videowall.subsets.find((subset) => subset.id === options.subsetselect)
-				subset.addElement(this.videowall.elements.find((element) => element.index === decoder))
-				self.videowall.removeEmptySubsets()
+				const subset =
+					options.subset_selection === 'new'
+						? self.videowall.addSubset()
+						: options.subset_selection === 'latest'
+						? self.videowall.subsets.at(-1)
+						: self.videowall.subsets.find((subset) => subset.id === options.subset_selection)
+				const element = self.videowall.elements.find((element) => element.index == options.decoder)
+				subset.addElement(element)
+				if (self.videowall.removeEmptySubsets()) {
+					self.setVariableValues({ selected_subset: self.videowall.subsets.at(0).id })
+				}
+			}
+		}
+		actions.new_subset = {
+			name: 'Add new subset',
+			options: [
+				{
+					type: 'static-text',
+					id: 'title',
+					label: 'Information',
+					value: "Add a new subset into the module's internal video wall model.",
+					width: 12
+				}
+			],
+			callback: async (action) => {
+				if (self.videowall.subsets.length < self.videowall.maxSubsets) {
+					const subset = self.videowall.addSubset()
+					console.log(`Added new subset to internal video wall, id: ${subset.id}`)
+				}
+			}
+		}
+		actions.change_subset_input = {
+			name: 'Change subset input',
+			options: [
+				{
+					type: 'static-text',
+					id: 'title',
+					label: 'Information',
+					value: `Change the input for all decoders in a video wall subset. 'Use currently selected channel' gets the subset id from the selected_subset variable. Use the action 'Cycle subset selection' to change the variable's value.`,
+					width: 12
+				},
+				{
+					type: 'checkbox',
+					id: 'use_selected_subset',
+					label: 'Use currently selected subset',
+					default: true
+				},
+				{
+					id: 'subset_selection',
+					type: 'dropdown',
+					label: 'Subset',
+					choices: subsetChoices,
+					default: defaultSubset,
+					isVisible: (options) => !options.use_selected_subset
+				},
+				{
+					type: 'checkbox',
+					id: 'use_selected_channel',
+					label: 'Use currently selected channel',
+					default: true
+				},
+				{
+					id: 'channel',
+					type: 'dropdown',
+					label: 'Channel',
+					choices: encoderChoices,
+					default: encoderDefault,
+					isVisible: (options) => !options.use_selected_channel
+				}
+			],
+			callback: async (action) => {
+				const options = action.options
+				const subsetSelectionId = options.use_selected_subset
+					? self.getVariableValue('selected_subset')
+					: options.subset_selection
+				const subset = self.videowall.subsets.find((subset) => subset.id === subsetSelectionId)
+				const channelId = options.use_selected_channel 
+					? self.getVariableValue('selected_channel') 
+					: options.channel
+
+				console.log(`Switching subset ${subset.id} channel to ${channelId}`)
+
+				subset.elements.forEach((element) => {
+					const socket = self.decoderSockets.find((socket) => socket.id === element.index + 1)
+					if (!socket.isConnected) {
+						console.log(`Socket for ${socket.label} not connected!`)
+						return
+					}
+					socket.send(`#KDS-CHANNEL-SELECT VIDEO,${channelId}\r`)
+				})
+			}
+		}
+		actions.apply_videowall = {
+			name: 'Apply current video wall partitioning',
+			options: [
+				{
+					type: 'static-text',
+					id: 'title',
+					label: 'Information',
+					value: 'Synchronize the decoders with current internal video wall partitioning setup.',
+					width: 12
+				}
+			],
+			callback: async () => {
+				if (!self.config.port || self.videowall === undefined) return
+				self.videowall.subsets.forEach((subset) => {
+					subset.elements.forEach((element) => {
+						const socket = self.decoderSockets.find((socket) => socket.id === element.index + 1)
+						if (!socket.isConnected) {
+							console.log(`Socket for ${socket.label} not connected!`)
+							return
+						}
+						console.log(`to socket ${socket.id}: #VIEW-MOD 15,${subset.width},${subset.height}\r`)
+						console.log(`to socket ${socket.id}: #VIDEO-WALL-SETUP ${element.outputId},0\r`)
+						socket.send(`#VIEW-MOD 15,${subset.width},${subset.height}\r`)
+						socket.send(`#VIDEO-WALL-SETUP ${element.outputId},0\r`)
+					})
+				})
+			}
+		}
+		actions.clear_videowall = {
+			name: 'Reset internal video wall partitioning',
+			options: [
+				{
+					type: 'static-text',
+					id: 'title',
+					label: 'Information',
+					value:
+						"Clears all subsets from the current internal video wall model, i.e. results in only one view area spanning the entire video wall. Chain with the 'apply partitioning' action to reset the actual video wall.",
+					width: 12
+				}
+			],
+			callback: async () => {
+				if (!self.config.port || self.videowall === undefined) return
+				console.log('Resetting video wall partition')
+				self.videowall.clear()
+				self.setVariableValues({ selected_subset: self.videowall.subsets.at(0).id })
+			}
+		}
+		actions.sync_stuff = {
+			name: 'Update actions and feedbacks',
+			options: [
+				{
+					type: 'static-text',
+					id: 'title',
+					label: 'Information',
+					value: "Updates this module's action and feedback definitions.",
+					width: 12
+				}
+			],
+			callback: async () => {
+				self.updateActions()
+				self.updateFeedbacks()
+			}
+		}
+		actions.cycle_selected_subset = {
+			name: 'Cycle subset selection',
+			options: [
+				{
+					type: 'static-text',
+					id: 'title',
+					label: 'Information',
+					value:
+						'Changes the selected subset variable for the next/previous one. Loops around if next/previous is out of bounds.',
+					width: 12
+				},
+				DirectionChoice
+			],
+			callback: async (action) => {
+				const selected_subset = parseInt(self.getVariableValue('selected_subset'))
+				if (selected_subset === NaN || self.videowall.subsets.length === 1) {
+					return
+				}
+				const direction = action.options.direction === 'next' ? 1 : -1
+				self.setVariableValues({
+					selected_subset: self.videowall.subsets.at((selected_subset - 1 + direction) % self.videowall.subsets.length)
+						.id
+				})
+			}
+		}
+		actions.cycle_selected_channel = {
+			name: 'Cycle channel selection',
+			options: [
+				{
+					type: 'static-text',
+					id: 'title',
+					label: 'Information',
+					value:
+						'Changes the selected channel variable for the next/previous one. Loops around if next/previous is out of bounds.',
+					width: 12
+				},
+				DirectionChoice
+			],
+			callback: async (action) => {
+				const selected_channel = parseInt(self.getVariableValue('selected_channel'))
+				if (selected_channel === NaN || self.encoderSockets.length === 1) {
+					return
+				}
+				const currentEncoderIndex = self.encoderSockets.findIndex((element) => element.channelId === selected_channel)
+				const direction = action.options.direction === 'next' ? 1 : -1
+				self.setVariableValues({
+					selected_channel: self.encoderSockets.at((currentEncoderIndex + direction) % self.encoderSockets.length)
+						.channelId
+				})
+			}
+		}
+		actions.toggle_corner = {
+			name: 'Toggle corner view',
+			options: [
+				{
+					type: 'static-text',
+					id: 'title',
+					label: 'Information',
+					value:
+						'',
+					width: 12
+				},
+				DirectionChoice
+			],
+			callback: async (action) => {
+
+			}
+		}
+		actions.log_videowall_status = {
+			name: 'DEBUG Log video wall status',
+			options: [
+				{
+					type: 'static-text',
+					id: 'title',
+					label: 'Information',
+					value:
+						'Changes the selected subset variable for the next/previous one. Loops around if next/previous is out of bounds.',
+					width: 12
+				}
+			],
+			callback: async (action) => {
+				if (self.videowall === undefined) return
+				console.log(self.videowall)
+				console.log(self.videowall.elements)
+				console.log(self.videowall.subsets)
 			}
 		}
 	}
