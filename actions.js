@@ -403,9 +403,7 @@ export function getActionDefinitions (self) {
 					? self.getVariableValue('selected_subset')
 					: options.subset_selection
 				const subset = self.videowall.subsets.find((subset) => subset.id === subsetSelectionId)
-				const channelId = options.use_selected_channel 
-					? self.getVariableValue('selected_channel') 
-					: options.channel
+				const channelId = options.use_selected_channel ? self.getVariableValue('selected_channel') : options.channel
 
 				console.log(`Switching subset ${subset.id} channel to ${channelId}`)
 
@@ -432,19 +430,18 @@ export function getActionDefinitions (self) {
 			],
 			callback: async () => {
 				if (!self.config.port || self.videowall === undefined) return
-				self.videowall.subsets.forEach((subset) => {
+				for (const subset of self.videowall.subsets) {
+					if (!subset.hasNewChanges) continue
 					subset.elements.forEach((element) => {
 						const socket = self.decoderSockets.find((socket) => socket.id === element.index + 1)
 						if (!socket.isConnected) {
 							console.log(`Socket for ${socket.label} not connected!`)
 							return
 						}
-						console.log(`to socket ${socket.id}: #VIEW-MOD 15,${subset.width},${subset.height}\r`)
-						console.log(`to socket ${socket.id}: #VIDEO-WALL-SETUP ${element.outputId},0\r`)
 						socket.send(`#VIEW-MOD 15,${subset.width},${subset.height}\r`)
 						socket.send(`#VIDEO-WALL-SETUP ${element.outputId},0\r`)
 					})
-				})
+				}
 			}
 		}
 		actions.clear_videowall = {
@@ -540,15 +537,12 @@ export function getActionDefinitions (self) {
 					type: 'static-text',
 					id: 'title',
 					label: 'Information',
-					value:
-						'',
+					value: '',
 					width: 12
 				},
 				DirectionChoice
 			],
-			callback: async (action) => {
-
-			}
+			callback: async (action) => {}
 		}
 		actions.log_videowall_status = {
 			name: 'DEBUG Log video wall status',
@@ -557,8 +551,7 @@ export function getActionDefinitions (self) {
 					type: 'static-text',
 					id: 'title',
 					label: 'Information',
-					value:
-						'Changes the selected subset variable for the next/previous one. Loops around if next/previous is out of bounds.',
+					value: 'test',
 					width: 12
 				}
 			],
@@ -567,6 +560,9 @@ export function getActionDefinitions (self) {
 				console.log(self.videowall)
 				console.log(self.videowall.elements)
 				console.log(self.videowall.subsets)
+				self.videowall.subsets.forEach((subset) => {
+					console.log(`subset ${subset.id} has changes?: ${subset.peekChanges()}`)
+				})
 			}
 		}
 	}

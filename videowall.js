@@ -21,6 +21,7 @@ class Element {
 //Disjoint set. Owns unique matrix elements that can only exist in one subset at a time.
 //Keeps track of the 2d orthogonal bounding box that it's elements fit inside of.
 class Subset {
+	#hasNewChanges
 	constructor (id, maxX, maxY, elements) {
 		this.id = id
 		this.maxX = maxX
@@ -34,6 +35,7 @@ class Subset {
 			this.boundingBox = undefined
 			this.elements = []
 		}
+		this.#hasNewChanges = true
 	}
 	get width () {
 		if (this.boundingBox === undefined) return 0
@@ -43,6 +45,18 @@ class Subset {
 	get height () {
 		if (this.boundingBox === undefined) return 0
 		return this.boundingBox.y2 - this.boundingBox.y1 + 1
+	}
+
+	get hasNewChanges () {
+		if (this.#hasNewChanges) {
+			this.#hasNewChanges = false
+			return true
+		}
+		return false
+	}
+
+	peekChanges () {
+		return this.#hasNewChanges
 	}
 
 	isElementInBounds (element) {
@@ -56,9 +70,13 @@ class Subset {
 	}
 
 	calculateBounds () {
+		const oldBounds = this.boundingBox
 		if (this.elements.length === 0) {
 			this.boundingBox = undefined
-		} else if (this.elements.length === 1) {
+			// Can't apply changes for an empty subset so no need to check for them
+			return
+		}
+		if (this.elements.length === 1) {
 			const element = this.elements[0]
 			this.boundingBox = {
 				x1: element.x,
@@ -76,9 +94,22 @@ class Subset {
 			})
 			this.boundingBox = bounds
 		}
+		// True when first calculating bounds with not empty array of elements provided to constructor
+		if (oldBounds === undefined) {
+			this.#hasNewChanges = true
+			return
+		}
+		Object.keys(this.boundingBox).forEach((corner) => {
+			if (this.boundingBox[corner] !== oldBounds[corner]) {
+				this.#hasNewChanges = true
+				return
+			}
+		})
 	}
 
 	adjustBounds () {
+		// This only ever gets called if the new element wasn't in old bounds -> the bounds have changed
+		this.#hasNewChanges = true
 		const newElement = this.elements.at(-1)
 		if (this.elements.length === 1) {
 			this.boundingBox = {
