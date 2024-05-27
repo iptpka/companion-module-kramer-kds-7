@@ -37,7 +37,7 @@ class KDS7Instance extends InstanceBase {
 		let socketArray = []
 		addresses.forEach((address, i) => {
 			const socket = new TCPHelper(address, this.config.port)
-			socket.label = `${devicetype}${i + 1}`
+			socket.label = `${devicetype} ${i + 1}`
 			socket.id = i + 1
 			// For protocol 3000 responses
 			socket.responses = {}
