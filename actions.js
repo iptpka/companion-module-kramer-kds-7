@@ -1,8 +1,7 @@
 import { PROTOCOL3000COMMANDS } from './constants.js'
 
 export function getActionDefinitions (self) {
-	if (!self.config.port) return {}
-
+	if (!self.configOk) return {}
 	const encoderChoices = self.encoderSockets.map((encoder) => ({
 		id: encoder.channelId,
 		label: `Channel ${encoder.channelId}`
@@ -34,7 +33,7 @@ export function getActionDefinitions (self) {
 				}
 			],
 			callback: async (action) => {
-				if (!self.config.port) return
+				if (!self.configOk) return
 				const cmd = await self.parseVariablesInString(action.options.text)
 				console.log(cmd)
 			}
@@ -112,7 +111,7 @@ export function getActionDefinitions (self) {
 				}
 			],
 			callback: async (action) => {
-				if (!self.config.port) return
+				if (!self.configOk) return
 				const options = action.options
 				const cmdContent = options.free_input
 					? `#${options.command}\r`
@@ -186,7 +185,7 @@ export function getActionDefinitions (self) {
 				}
 			],
 			callback: async (action) => {
-				if (!self.config.port) return
+				if (!self.configOk) return
 				const options = action.options
 				const cmdContent = options.free_input
 					? `#${options.command}\r`
@@ -279,6 +278,7 @@ export function getActionDefinitions (self) {
 				}
 			],
 			callback: async (action) => {
+				if (!self.configOk || self.videowall === undefined) return
 				const options = action.options
 				const cmdContent = options.free_input
 					? `#${options.command}\r`
@@ -326,6 +326,7 @@ export function getActionDefinitions (self) {
 				}
 			],
 			callback: async (action) => {
+				if (!self.configOk || self.videowall === undefined) return
 				const options = action.options
 				const subset =
 					options.subset_selection === 'new'
@@ -333,11 +334,12 @@ export function getActionDefinitions (self) {
 						: options.subset_selection === 'latest'
 						? self.videowall.subsets.at(-1)
 						: self.videowall.subsets.find((subset) => subset.id === options.subset_selection)
-				const element = self.videowall.elements.find((element) => element.index == options.decoder)
+				const element = self.videowall.elements.find((element) => element.index == options.decoder - 1)
 				subset.addElement(element)
-				if (self.videowall.removeEmptySubsets()) {
+				if (self.videowall.removeEmptySubsets() && parseInt(self.getVariableValue('selected_subset')) >= self.videowall.subsets.length) {
 					self.setVariableValues({ selected_subset: self.videowall.subsets.at(0).id })
 				}
+				self.setVariableValues({ subset_amount: self.videowall.subsets.length })
 			}
 		}
 		actions.new_subset = {
@@ -352,6 +354,7 @@ export function getActionDefinitions (self) {
 				}
 			],
 			callback: async (action) => {
+				if (!self.configOk || self.videowall === undefined) return
 				if (self.videowall.subsets.length < self.videowall.maxSubsets) {
 					const subset = self.videowall.addSubset()
 					console.log(`Added new subset to internal video wall, id: ${subset.id}`)
@@ -398,6 +401,7 @@ export function getActionDefinitions (self) {
 				}
 			],
 			callback: async (action) => {
+				if (!self.configOk || self.videowall === undefined) return
 				const options = action.options
 				const subsetSelectionId = options.use_selected_subset
 					? self.getVariableValue('selected_subset')
@@ -429,12 +433,12 @@ export function getActionDefinitions (self) {
 				}
 			],
 			callback: async () => {
-				if (!self.config.port || self.videowall === undefined) return
+				if (!self.configOk || self.videowall === undefined) return
 				for (const subset of self.videowall.subsets) {
 					if (!subset.hasNewChanges) continue
 					subset.elements.forEach((element) => {
 						const socket = self.decoderSockets.find((socket) => socket.id === element.index + 1)
-						if (!socket.isConnected) {
+						if (!socket.isConnected || !self.configOk) {
 							console.log(`Socket for ${socket.label} not connected!`)
 							return
 						}
@@ -457,10 +461,11 @@ export function getActionDefinitions (self) {
 				}
 			],
 			callback: async () => {
-				if (!self.config.port || self.videowall === undefined) return
+				if ( self.videowall === undefined || !self.configOk) return
 				console.log('Resetting video wall partition')
 				self.videowall.clear()
 				self.setVariableValues({ selected_subset: self.videowall.subsets.at(0).id })
+				self.setVariableValues({ subset_amount: 1 })
 			}
 		}
 		actions.sync_stuff = {
@@ -494,7 +499,7 @@ export function getActionDefinitions (self) {
 			],
 			callback: async (action) => {
 				const selected_subset = parseInt(self.getVariableValue('selected_subset'))
-				if (selected_subset === NaN || self.videowall.subsets.length === 1) {
+				if (selected_subset === NaN || self.videowall.subsets.length === 1 || !self.configOk) {
 					return
 				}
 				const direction = action.options.direction === 'next' ? 1 : -1
@@ -519,7 +524,7 @@ export function getActionDefinitions (self) {
 			],
 			callback: async (action) => {
 				const selected_channel = parseInt(self.getVariableValue('selected_channel'))
-				if (selected_channel === NaN || self.encoderSockets.length === 1) {
+				if (selected_channel === NaN || self.encoderSockets.length === 1 || !self.configOk) {
 					return
 				}
 				const currentEncoderIndex = self.encoderSockets.findIndex((element) => element.channelId === selected_channel)
@@ -563,6 +568,7 @@ export function getActionDefinitions (self) {
 				self.videowall.subsets.forEach((subset) => {
 					console.log(`subset ${subset.id} has changes?: ${subset.peekChanges()}`)
 				})
+				console.log(`Subset amount: ${self.videowall.subsets.length}`)
 			}
 		}
 	}
