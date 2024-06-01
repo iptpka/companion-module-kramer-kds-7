@@ -8,36 +8,36 @@ import { incrementedIP } from './utils.js'
 import { VideoWall } from './videowall.js'
 
 class KDS7Instance extends InstanceBase {
-	async handleDataResponse (socket, data) {
+	async handleDataResponse(socket, data) {
 		const dataResponse = data.toString()
 		// Workaround for weird empty data, the buffer probably doesn't get cleared properly sometimes
 		if (dataResponse.length === 0) return
 		this.log(socket.logAsInfo ? 'info' : 'debug', `KDS ${socket.label}: ${dataResponse}`)
 	}
 
-	constructor (internal) {
+	constructor(internal) {
 		super(internal)
 		this.encoderSockets = []
 		this.decoderSockets = []
 		this.configOk = false
 	}
 
-	get sockets () {
+	get sockets() {
 		return this.encoderSockets.concat(this.decoderSockets)
 	}
 
-	async init (config) {
+	async init(config) {
 		this.updateStatus(InstanceStatus.Disconnected)
 		this.config = config
 		this.configOk = this.validateConfig(config)
 		this.createConnections()
 	}
 
-	validateConfig (config) {
+	validateConfig(config) {
 		return config !== undefined && config.port != '' && config.encoderaddress != '' && config.decoderaddress != ''
 	}
 
-	createSockets (addresses, devicetype) {
+	createSockets(addresses, devicetype) {
 		return addresses.map((address, i) => {
 			const socket = new TCPHelper(address, this.config.port)
 			socket.label = `${devicetype} ${i + 1}`
@@ -55,11 +55,11 @@ class KDS7Instance extends InstanceBase {
 		})
 	}
 
-	createAddressRange (start, size) {
+	createAddressRange(start, size) {
 		return [...Array(size).keys()].map((x) => incrementedIP(start, x))
 	}
 
-	async initTCP () {
+	async initTCP() {
 		this.destroySockets()
 
 		const encoderAddresses = this.createAddressRange(this.config.encoderaddress, this.config.encoderamount)
@@ -68,7 +68,7 @@ class KDS7Instance extends InstanceBase {
 		this.encoderSockets = this.createSockets(encoderAddresses, 'encoder')
 	}
 
-	async verifyConnections () {
+	async verifyConnections() {
 		let waitForConnections = []
 		this.sockets.forEach((socket) => {
 			const statusPromise = {}
@@ -95,7 +95,7 @@ class KDS7Instance extends InstanceBase {
 		})
 	}
 
-	async protocol3000Handshake () {
+	async protocol3000Handshake() {
 		const handshakes = this.sockets.map((socket) => {
 			return this.protocolQuery(socket, '#\r', (_, response, responsePromise) => {
 				if (response.includes('OK')) {
@@ -112,14 +112,14 @@ class KDS7Instance extends InstanceBase {
 		})
 	}
 
-	async promiseAllOrTimeout (promises, milliseconds, timeoutMessage) {
+	async promiseAllOrTimeout(promises, milliseconds, timeoutMessage) {
 		const timeout = new Promise((_, reject) => {
 			setTimeout(reject, milliseconds, new Error(timeoutMessage))
 		})
 		return Promise.race([Promise.all(promises), timeout])
 	}
 
-	async queryChannelIds () {
+	async queryChannelIds() {
 		const channelIdQueries = this.encoderSockets.map((socket) => {
 			return this.protocolQuery(socket, '#KDS-DEFINE-CHANNEL?\r', this.responseResolver(this, 'KDS-DEFINE-CHANNEL'))
 		})
@@ -135,7 +135,7 @@ class KDS7Instance extends InstanceBase {
 			})
 	}
 
-	async destroySockets () {
+	async destroySockets() {
 		this.encoderSockets.forEach((socket) => {
 			if (socket !== undefined) {
 				socket.destroy()
@@ -149,14 +149,14 @@ class KDS7Instance extends InstanceBase {
 		this.encoderSockets.length = this.decoderSockets.length = 0
 	}
 
-	async destroy () {
+	async destroy() {
 		this.destroySockets()
 		if (this.videowall) {
 			delete this.videowall
 		}
 	}
 
-	parseResponse (dataResponse) {
+	parseResponse(dataResponse) {
 		const responseArray = dataResponse
 			.slice(dataResponse.indexOf('@') + 1)
 			.trimEnd()
@@ -164,7 +164,7 @@ class KDS7Instance extends InstanceBase {
 		return { command: responseArray[0], parameters: responseArray[1] }
 	}
 
-	responseResolver (self, validationString) {
+	responseResolver(self, validationString) {
 		return function (socket, response, responsePromise) {
 			if (!response.includes(validationString)) {
 				if (response.includes('ERR')) {
@@ -182,7 +182,7 @@ class KDS7Instance extends InstanceBase {
 	 * to determine how the video wall is partitioned into different views
 	 * and builds a matching VideoWall instance.
 	 */
-	async queryVideoWallPartition () {
+	async queryVideoWallPartition() {
 		let queries = []
 		this.decoderSockets.forEach((socket) => {
 			queries.push(this.protocolQuery(socket, '#VIDEO-WALL-SETUP?\r', this.responseResolver(this, 'VIDEO-WALL-SETUP')))
@@ -191,7 +191,7 @@ class KDS7Instance extends InstanceBase {
 		return this.promiseAllOrTimeout(queries, 5000, 'Video Wall query timeout!')
 	}
 
-	async updateVideoWall () {
+	async updateVideoWall() {
 		const rows = this.config.videowallrows
 		const columns = this.config.videowallcolumns
 
@@ -272,7 +272,7 @@ class KDS7Instance extends InstanceBase {
 	 * @returns {Promise<any>}
 	 * @todo Make this easier to understand if possible, currently feels very hacky and probably breaks all sorts of conventions.
 	 */
-	async protocolQuery (socket, message, onResponseCallback) {
+	async protocolQuery(socket, message, onResponseCallback) {
 		const responsePromise = {}
 		responsePromise.promise = new Promise((res, rej) => {
 			responsePromise.resolve = res
@@ -292,7 +292,7 @@ class KDS7Instance extends InstanceBase {
 		socket.send(message)
 		return responsePromise.promise
 	}
-	async createConnections () {
+	async createConnections() {
 		if (!this.configOk) {
 			return
 		}
@@ -308,18 +308,18 @@ class KDS7Instance extends InstanceBase {
 			this.sockets.forEach((socket) => {
 				socket.logAsInfo = true
 			})
-		} catch(error) {
+		} catch (error) {
 			this.log('error', error.message)
 		}
 	}
 
-	checkConfigChanged (config) {
+	checkConfigChanged(config) {
 		for (const key of Object.keys(config)) {
 			if (this.config[key] !== config[key]) return false
 		}
 		return true
 	}
-	async configUpdated (config) {
+	async configUpdated(config) {
 		const configSame = this.checkConfigChanged(config)
 		if (configSame) return
 		this.configOk = this.validateConfig(config)
@@ -333,29 +333,29 @@ class KDS7Instance extends InstanceBase {
 		this.createConnections()
 	}
 
-	getConfigFields () {
+	getConfigFields() {
 		return ConfigFields
 	}
 
-	updateActions () {
+	updateActions() {
 		this.setActionDefinitions(getActionDefinitions(this))
 	}
 
-	updateFeedbacks () {
+	updateFeedbacks() {
 		this.setFeedbackDefinitions(getFeedBackDefinitions(this))
 	}
 
-	updateVariableDefinitions () {
+	updateVariableDefinitions() {
 		this.setVariableDefinitions(getVariableDefinitions(this))
 	}
 
-	updateVariables () {
+	updateVariables() {
 		try {
 			this.setVariableValues({ selected_channel: this.encoderSockets.at(0).channelId })
-			this.setVariableValues({ channel_amount: this.encoderSockets.length})
+			this.setVariableValues({ channel_amount: this.encoderSockets.length })
 			if (this.config.videowall) {
 				this.setVariableValues({ selected_subset: this.videowall.subsets.at(0).id })
-				this.setVariableValues({ subset_amount: this.videowall.subsets.length.toString()})
+				this.setVariableValues({ subset_amount: this.videowall.subsets.length.toString() })
 			}
 		} catch (error) {
 			this.log('error', error.message)

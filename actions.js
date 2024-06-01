@@ -1,10 +1,10 @@
 import { PROTOCOL3000COMMANDS } from './constants.js'
 
-export function getActionDefinitions (self) {
+export function getActionDefinitions(self) {
 	if (!self.configOk) return {}
 	const encoderChoices = self.encoderSockets.map((encoder) => ({
 		id: encoder.channelId,
-		label: `Channel ${encoder.channelId}`
+		label: `Channel ${encoder.channelId}`,
 	}))
 	const decoderChoices = self.decoderSockets.map((decoder) => ({ id: decoder.id, label: decoder.id }))
 	const encoderDefault = encoderChoices.at(0).id
@@ -15,9 +15,9 @@ export function getActionDefinitions (self) {
 		label: 'Direction',
 		choices: [
 			{ id: 'next', label: 'Next' },
-			{ id: 'previous', label: 'Previous' }
+			{ id: 'previous', label: 'Previous' },
 		],
-		default: 'next'
+		default: 'next',
 	}
 	let actions = {
 		debug_variable_tester: {
@@ -29,14 +29,14 @@ export function getActionDefinitions (self) {
 					label: 'Text',
 					default: '',
 					useVariables: true,
-					width: 12
-				}
+					width: 12,
+				},
 			],
 			callback: async (action) => {
 				if (!self.configOk) return
 				const cmd = await self.parseVariablesInString(action.options.text)
 				console.log(cmd)
-			}
+			},
 		},
 		send_command: {
 			name: 'Send Protocol 3000 Command',
@@ -47,14 +47,14 @@ export function getActionDefinitions (self) {
 					label: 'Information',
 					value:
 						'Send a Protocol 3000 command to a single device. Commands are automatically prefixed & suffixed accordingly, you only need the command name and parameters.',
-					width: 12
+					width: 12,
 				},
 				{
 					type: 'checkbox',
 					id: 'free_input',
 					label: 'Free input',
 					default: false,
-					width: 12
+					width: 12,
 				},
 				{
 					id: 'command_selection',
@@ -62,7 +62,7 @@ export function getActionDefinitions (self) {
 					label: 'Command',
 					choices: PROTOCOL3000COMMANDS,
 					default: '#',
-					isVisible: (options) => !options.free_input
+					isVisible: (options) => !options.free_input,
 				},
 				{
 					id: 'parameters',
@@ -72,7 +72,7 @@ export function getActionDefinitions (self) {
 					useVariables: true,
 					width: 12,
 					isVisibleData: PROTOCOL3000COMMANDS,
-					isVisible: (options) => !options.free_input
+					isVisible: (options) => !options.free_input,
 				},
 				{
 					id: 'command',
@@ -81,7 +81,7 @@ export function getActionDefinitions (self) {
 					default: '',
 					useVariables: true,
 					width: 12,
-					isVisible: (options) => options.free_input
+					isVisible: (options) => options.free_input,
 				},
 				{
 					id: 'device_type',
@@ -89,9 +89,9 @@ export function getActionDefinitions (self) {
 					label: 'Device type',
 					choices: [
 						{ id: 'encoder', label: 'Encoder' },
-						{ id: 'decoder', label: 'Decoder' }
+						{ id: 'decoder', label: 'Decoder' },
 					],
-					default: 'encoder'
+					default: 'encoder',
 				},
 				{
 					id: 'encoder',
@@ -99,7 +99,7 @@ export function getActionDefinitions (self) {
 					label: 'Encoder channel',
 					choices: encoderChoices,
 					default: encoderDefault,
-					isVisible: (options) => options.device_type === 'encoder'
+					isVisible: (options) => options.device_type === 'encoder',
 				},
 				{
 					id: 'decoder',
@@ -107,8 +107,8 @@ export function getActionDefinitions (self) {
 					label: 'Decoder number',
 					choices: decoderChoices,
 					default: decoderDefault,
-					isVisible: (options) => options.device_type === 'decoder'
-				}
+					isVisible: (options) => options.device_type === 'decoder',
+				},
 			],
 			callback: async (action) => {
 				if (!self.configOk) return
@@ -126,7 +126,7 @@ export function getActionDefinitions (self) {
 				} else {
 					console.log('Socket not connected!')
 				}
-			}
+			},
 		},
 		broadcast_command: {
 			name: 'Broadcast Protocol 3000 Command',
@@ -137,14 +137,14 @@ export function getActionDefinitions (self) {
 					label: 'Information',
 					value:
 						'Broadcast a Protocol 3000 command to all connected devices of selected type. Commands are automatically prefixed & suffixed accordingly, you only need the command name and parameters.',
-					width: 12
+					width: 12,
 				},
 				{
 					type: 'checkbox',
 					id: 'free_input',
 					label: 'Free input',
 					default: false,
-					width: 12
+					width: 12,
 				},
 				{
 					id: 'command_selection',
@@ -152,7 +152,7 @@ export function getActionDefinitions (self) {
 					label: 'Command',
 					choices: PROTOCOL3000COMMANDS,
 					default: '#',
-					isVisible: (options) => !options.free_input
+					isVisible: (options) => !options.free_input,
 				},
 				{
 					id: 'parameters',
@@ -162,7 +162,7 @@ export function getActionDefinitions (self) {
 					useVariables: true,
 					width: 12,
 					isVisibleData: PROTOCOL3000COMMANDS,
-					isVisible: (options) => !options.free_input
+					isVisible: (options) => !options.free_input,
 				},
 				{
 					id: 'command',
@@ -171,7 +171,7 @@ export function getActionDefinitions (self) {
 					default: '',
 					useVariables: true,
 					width: 12,
-					isVisible: (options) => options.free_input
+					isVisible: (options) => options.free_input,
 				},
 				{
 					id: 'device_type',
@@ -179,10 +179,10 @@ export function getActionDefinitions (self) {
 					label: 'Device type',
 					choices: [
 						{ id: 'encoder', label: 'Encoder' },
-						{ id: 'decoder', label: 'Decoder' }
+						{ id: 'decoder', label: 'Decoder' },
 					],
-					default: 'encoder'
-				}
+					default: 'encoder',
+				},
 			],
 			callback: async (action) => {
 				if (!self.configOk) return
@@ -200,12 +200,12 @@ export function getActionDefinitions (self) {
 					}
 					socket.send(cmd)
 				})
-			}
-		}
+			},
+		},
 	}
 
 	if (self.config.videowall && self.videowall !== undefined) {
-		function subsetChoiceArray () {
+		function subsetChoiceArray() {
 			const subsets = self.videowall.subsets
 			return [...Array(self.videowall.subsets.length).keys()].map((x) => {
 				const subset = subsets.at(x)
@@ -226,14 +226,14 @@ export function getActionDefinitions (self) {
 					label: 'Information',
 					value:
 						'Multicast a Protocol 3000 command to all decoders in selected video wall subset. Commands are automatically prefixed & suffixed accordingly, you only need the command name and parameters.',
-					width: 12
+					width: 12,
 				},
 				{
 					type: 'checkbox',
 					id: 'free_input',
 					label: 'Free input',
 					default: false,
-					width: 12
+					width: 12,
 				},
 				{
 					id: 'command_selection',
@@ -241,7 +241,7 @@ export function getActionDefinitions (self) {
 					label: 'Command',
 					choices: PROTOCOL3000COMMANDS,
 					default: '#',
-					isVisible: (options) => !options.free_input
+					isVisible: (options) => !options.free_input,
 				},
 				{
 					id: 'parameters',
@@ -251,7 +251,7 @@ export function getActionDefinitions (self) {
 					useVariables: true,
 					width: 12,
 					isVisibleData: PROTOCOL3000COMMANDS,
-					isVisible: (options) => !options.free_input
+					isVisible: (options) => !options.free_input,
 				},
 				{
 					id: 'command',
@@ -260,13 +260,13 @@ export function getActionDefinitions (self) {
 					default: '',
 					useVariables: true,
 					width: 12,
-					isVisible: (options) => options.free_input
+					isVisible: (options) => options.free_input,
 				},
 				{
 					type: 'checkbox',
 					id: 'use_current',
 					label: 'Use currently selected subset',
-					default: true
+					default: true,
 				},
 				{
 					id: 'subset_selection',
@@ -274,8 +274,8 @@ export function getActionDefinitions (self) {
 					label: 'Subset',
 					choices: subsetChoices,
 					default: defaultSubset,
-					isVisible: (options) => !options.use_current
-				}
+					isVisible: (options) => !options.use_current,
+				},
 			],
 			callback: async (action) => {
 				if (!self.configOk || self.videowall === undefined) return
@@ -296,7 +296,7 @@ export function getActionDefinitions (self) {
 					}
 					socket.send(cmd.replace('<Id>', element.outputId))
 				})
-			}
+			},
 		}
 		actions.add_to_subset = {
 			name: 'Add Decoder to Subset',
@@ -308,22 +308,22 @@ export function getActionDefinitions (self) {
 					value: `Add a decoder to a subset of the module's internal video wall model. This action does NOT send any commands by itself. 
 						Select 'Add into new subset' from the dropdown to create a new subset and add the decoder into it.
 						The 'Newest created subset' option can be used to chain together actions where the first one creates a new subset and the others are added into that.`,
-					width: 12
+					width: 12,
 				},
 				{
 					id: 'subset_selection',
 					type: 'dropdown',
 					label: 'Subset',
 					choices: subsetChoicesAddNew,
-					default: defaultSubset
+					default: defaultSubset,
 				},
 				{
 					id: 'decoder',
 					type: 'dropdown',
 					label: 'Decoder number',
 					choices: decoderChoices,
-					default: decoderDefault
-				}
+					default: decoderDefault,
+				},
 			],
 			callback: async (action) => {
 				if (!self.configOk || self.videowall === undefined) return
@@ -336,11 +336,14 @@ export function getActionDefinitions (self) {
 						: self.videowall.subsets.find((subset) => subset.id === options.subset_selection)
 				const element = self.videowall.elements.find((element) => element.index == options.decoder - 1)
 				subset.addElement(element)
-				if (self.videowall.removeEmptySubsets() && parseInt(self.getVariableValue('selected_subset')) >= self.videowall.subsets.length) {
+				if (
+					self.videowall.removeEmptySubsets() &&
+					parseInt(self.getVariableValue('selected_subset')) >= self.videowall.subsets.length
+				) {
 					self.setVariableValues({ selected_subset: self.videowall.subsets.at(0).id })
 				}
 				self.setVariableValues({ subset_amount: self.videowall.subsets.length })
-			}
+			},
 		}
 		actions.new_subset = {
 			name: 'Add new subset',
@@ -350,8 +353,8 @@ export function getActionDefinitions (self) {
 					id: 'title',
 					label: 'Information',
 					value: "Add a new subset into the module's internal video wall model.",
-					width: 12
-				}
+					width: 12,
+				},
 			],
 			callback: async (action) => {
 				if (!self.configOk || self.videowall === undefined) return
@@ -359,7 +362,7 @@ export function getActionDefinitions (self) {
 					const subset = self.videowall.addSubset()
 					console.log(`Added new subset to internal video wall, id: ${subset.id}`)
 				}
-			}
+			},
 		}
 		actions.change_subset_input = {
 			name: 'Change subset input',
@@ -369,13 +372,13 @@ export function getActionDefinitions (self) {
 					id: 'title',
 					label: 'Information',
 					value: `Change the input for all decoders in a video wall subset. 'Use currently selected channel' gets the subset id from the selected_subset variable. Use the action 'Cycle subset selection' to change the variable's value.`,
-					width: 12
+					width: 12,
 				},
 				{
 					type: 'checkbox',
 					id: 'use_selected_subset',
 					label: 'Use currently selected subset',
-					default: true
+					default: true,
 				},
 				{
 					id: 'subset_selection',
@@ -383,13 +386,13 @@ export function getActionDefinitions (self) {
 					label: 'Subset',
 					choices: subsetChoices,
 					default: defaultSubset,
-					isVisible: (options) => !options.use_selected_subset
+					isVisible: (options) => !options.use_selected_subset,
 				},
 				{
 					type: 'checkbox',
 					id: 'use_selected_channel',
 					label: 'Use currently selected channel',
-					default: true
+					default: true,
 				},
 				{
 					id: 'channel',
@@ -397,8 +400,8 @@ export function getActionDefinitions (self) {
 					label: 'Channel',
 					choices: encoderChoices,
 					default: encoderDefault,
-					isVisible: (options) => !options.use_selected_channel
-				}
+					isVisible: (options) => !options.use_selected_channel,
+				},
 			],
 			callback: async (action) => {
 				if (!self.configOk || self.videowall === undefined) return
@@ -419,7 +422,7 @@ export function getActionDefinitions (self) {
 					}
 					socket.send(`#KDS-CHANNEL-SELECT VIDEO,${channelId}\r`)
 				})
-			}
+			},
 		}
 		actions.apply_videowall = {
 			name: 'Apply current video wall partitioning',
@@ -429,8 +432,8 @@ export function getActionDefinitions (self) {
 					id: 'title',
 					label: 'Information',
 					value: 'Synchronize the decoders with current internal video wall partitioning setup.',
-					width: 12
-				}
+					width: 12,
+				},
 			],
 			callback: async () => {
 				if (!self.configOk || self.videowall === undefined) return
@@ -446,7 +449,7 @@ export function getActionDefinitions (self) {
 						socket.send(`#VIDEO-WALL-SETUP ${element.outputId},0\r`)
 					})
 				}
-			}
+			},
 		}
 		actions.clear_videowall = {
 			name: 'Reset internal video wall partitioning',
@@ -457,16 +460,16 @@ export function getActionDefinitions (self) {
 					label: 'Information',
 					value:
 						"Clears all subsets from the current internal video wall model, i.e. results in only one view area spanning the entire video wall. Chain with the 'apply partitioning' action to reset the actual video wall.",
-					width: 12
-				}
+					width: 12,
+				},
 			],
 			callback: async () => {
-				if ( self.videowall === undefined || !self.configOk) return
+				if (self.videowall === undefined || !self.configOk) return
 				console.log('Resetting video wall partition')
 				self.videowall.clear()
 				self.setVariableValues({ selected_subset: self.videowall.subsets.at(0).id })
 				self.setVariableValues({ subset_amount: 1 })
-			}
+			},
 		}
 		actions.sync_stuff = {
 			name: 'Update actions and feedbacks',
@@ -476,13 +479,13 @@ export function getActionDefinitions (self) {
 					id: 'title',
 					label: 'Information',
 					value: "Updates this module's action and feedback definitions.",
-					width: 12
-				}
+					width: 12,
+				},
 			],
 			callback: async () => {
 				self.updateActions()
 				self.updateFeedbacks()
-			}
+			},
 		}
 		actions.cycle_selected_subset = {
 			name: 'Cycle subset selection',
@@ -493,9 +496,9 @@ export function getActionDefinitions (self) {
 					label: 'Information',
 					value:
 						'Changes the selected subset variable for the next/previous one. Loops around if next/previous is out of bounds.',
-					width: 12
+					width: 12,
 				},
-				DirectionChoice
+				DirectionChoice,
 			],
 			callback: async (action) => {
 				const selected_subset = parseInt(self.getVariableValue('selected_subset'))
@@ -505,9 +508,9 @@ export function getActionDefinitions (self) {
 				const direction = action.options.direction === 'next' ? 1 : -1
 				self.setVariableValues({
 					selected_subset: self.videowall.subsets.at((selected_subset - 1 + direction) % self.videowall.subsets.length)
-						.id
+						.id,
 				})
-			}
+			},
 		}
 		actions.cycle_selected_channel = {
 			name: 'Cycle channel selection',
@@ -518,9 +521,9 @@ export function getActionDefinitions (self) {
 					label: 'Information',
 					value:
 						'Changes the selected channel variable for the next/previous one. Loops around if next/previous is out of bounds.',
-					width: 12
+					width: 12,
 				},
-				DirectionChoice
+				DirectionChoice,
 			],
 			callback: async (action) => {
 				const selected_channel = parseInt(self.getVariableValue('selected_channel'))
@@ -531,9 +534,9 @@ export function getActionDefinitions (self) {
 				const direction = action.options.direction === 'next' ? 1 : -1
 				self.setVariableValues({
 					selected_channel: self.encoderSockets.at((currentEncoderIndex + direction) % self.encoderSockets.length)
-						.channelId
+						.channelId,
 				})
-			}
+			},
 		}
 		actions.toggle_corner = {
 			name: 'Toggle corner view',
@@ -543,11 +546,11 @@ export function getActionDefinitions (self) {
 					id: 'title',
 					label: 'Information',
 					value: '',
-					width: 12
+					width: 12,
 				},
-				DirectionChoice
+				DirectionChoice,
 			],
-			callback: async (action) => {}
+			callback: async (action) => {},
 		}
 		actions.log_videowall_status = {
 			name: 'DEBUG Log video wall status',
@@ -557,8 +560,8 @@ export function getActionDefinitions (self) {
 					id: 'title',
 					label: 'Information',
 					value: 'test',
-					width: 12
-				}
+					width: 12,
+				},
 			],
 			callback: async (action) => {
 				if (self.videowall === undefined) return
@@ -569,7 +572,7 @@ export function getActionDefinitions (self) {
 					console.log(`subset ${subset.id} has changes?: ${subset.peekChanges()}`)
 				})
 				console.log(`Subset amount: ${self.videowall.subsets.length}`)
-			}
+			},
 		}
 	}
 	return actions

@@ -1,6 +1,6 @@
 import { combineRgb } from '@companion-module/base'
 
-export async function getFeedBackDefinitions (self) {
+export async function getFeedBackDefinitions(self) {
 	return {
 		ChannelState: {
 			name: 'Example Feedback',
@@ -8,7 +8,7 @@ export async function getFeedBackDefinitions (self) {
 			label: 'Channel State',
 			defaultStyle: {
 				bgcolor: combineRgb(255, 0, 0),
-				color: combineRgb(0, 0, 0)
+				color: combineRgb(0, 0, 0),
 			},
 			options: [
 				{
@@ -17,8 +17,8 @@ export async function getFeedBackDefinitions (self) {
 					label: 'Test',
 					default: 5,
 					min: 0,
-					max: 10
-				}
+					max: 10,
+				},
 			],
 			callback: (feedback) => {
 				console.log('Hello world!', feedback.options.num)
@@ -27,7 +27,7 @@ export async function getFeedBackDefinitions (self) {
 				} else {
 					return false
 				}
-			}
-		}
+			},
+		},
 	}
 }
