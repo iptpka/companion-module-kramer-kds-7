@@ -1,5 +1,6 @@
 //Single matrix element
 class Element {
+	#hasNewChannel
 	constructor(x, y, index) {
 		this.x = x
 		this.y = y
@@ -7,12 +8,28 @@ class Element {
 		this.index = index
 		//index in subset
 		this.outputId = 1
+		this.#hasNewChannel = false
 		this.owner = null
+	}
+
+	get hasNewChannel() {
+		if (this.#hasNewChannel) {
+			this.#hasNewChannel = false
+			return true
+		}
+		return false
+	}
+
+	peekHasNewChannel() {
+		return this.#hasNewChannel
 	}
 
 	changeOwner(newOwner) {
 		if (this.owner) {
 			this.owner.removeElement(this)
+		}
+		if (newOwner.channel != this.owner.channel) {
+			this.#hasNewChannel = true
 		}
 		this.owner = newOwner
 	}
@@ -22,10 +39,11 @@ class Element {
 //Keeps track of the 2d orthogonal bounding box that it's elements fit inside of.
 class Subset {
 	#hasNewChanges
-	constructor(id, maxX, maxY, elements) {
+	constructor(id, maxX, maxY, elements, channel) {
 		this.id = id
 		this.maxX = maxX
 		this.maxY = maxY
+		this.channel = channel
 		if (elements) {
 			this.elements = elements
 			this.elements.forEach((element) => element.changeOwner(this))
@@ -160,13 +178,14 @@ class Subset {
 
 //Contains the wall partition (how the wall is divided into subsets) and dimensions of  the wall
 export class VideoWall {
-	constructor(rows, columns) {
+	constructor(rows, columns, defaultChannel) {
 		this.rows = rows
 		this.columns = columns
 		this.maxSubsets = rows * columns
 		this.wall = this.newWall(rows, columns)
 		const subset = new Subset(1, columns, rows, this.elements)
 		this.subsets = [subset]
+		this.defaultChannel = defaultChannel
 	}
 
 	get elements() {
@@ -181,8 +200,8 @@ export class VideoWall {
 		return wall
 	}
 
-	addSubset() {
-		const subset = new Subset(this.subsets.length + 1, this.columns, this.rows)
+	addSubset(channel = this.defaultChannel) {
+		const subset = new Subset(this.subsets.length + 1, this.columns, this.rows, channel)
 		this.subsets.push(subset)
 		return subset
 	}
@@ -192,8 +211,8 @@ export class VideoWall {
 			subset.clear()
 		})
 		this.wall = this.newWall(this.rows, this.columns)
-		this.subsets.length = 0
-		this.subsets = [new Subset(1, this.columns, this.rows, this.elements)]
+		this.subsets = []
+		this.addSubset()
 	}
 
 	removeEmptySubsets() {

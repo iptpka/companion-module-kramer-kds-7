@@ -364,14 +364,14 @@ export function getActionDefinitions(self) {
 				}
 			},
 		}
-		actions.change_subset_input = {
-			name: 'Change subset input',
+		actions.change_subset_channel = {
+			name: 'Change subset channel',
 			options: [
 				{
 					type: 'static-text',
 					id: 'title',
 					label: 'Information',
-					value: `Change the input for all decoders in a video wall subset. 'Use currently selected channel' gets the subset id from the selected_subset variable. Use the action 'Cycle subset selection' to change the variable's value.`,
+					value: `Change the input channel for all decoders in a video wall subset. 'Use currently selected channel' gets the subset id from the selected_subset variable. Use the action 'Cycle subset selection' to change the variable's value.`,
 					width: 12,
 				},
 				{
@@ -447,6 +447,9 @@ export function getActionDefinitions(self) {
 						}
 						socket.send(`#VIEW-MOD 15,${subset.width},${subset.height}\r`)
 						socket.send(`#VIDEO-WALL-SETUP ${element.outputId},0\r`)
+						if (element.hasNewChannel) {
+							socket.send(`#KDS-CHANNEL-SELECT VIDEO,${subset.channel}\r`)
+						}
 					})
 				}
 			},
