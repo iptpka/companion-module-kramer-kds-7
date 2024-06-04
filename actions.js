@@ -434,11 +434,17 @@ export function getActionDefinitions(self) {
 					value: 'Synchronize the decoders with current internal video wall partitioning setup.',
 					width: 12,
 				},
+				{
+					type: 'checkbox',
+					id: 'force_apply',
+					label: 'Force changes',
+					default: true,
+				},
 			],
-			callback: async () => {
+			callback: async (action) => {
 				if (!self.configOk || self.videowall === undefined) return
 				for (const subset of self.videowall.subsets) {
-					if (!subset.hasNewChanges) continue
+					if (!action.options.force_apply && !subset.hasNewChanges) continue
 					subset.elements.forEach((element) => {
 						const socket = self.decoderSockets.find((socket) => socket.id === element.index + 1)
 						if (!socket.isConnected || !self.configOk) {
@@ -447,7 +453,7 @@ export function getActionDefinitions(self) {
 						}
 						socket.send(`#VIEW-MOD 15,${subset.width},${subset.height}\r`)
 						socket.send(`#VIDEO-WALL-SETUP ${element.outputId},0\r`)
-						if (element.hasNewChannel) {
+						if (action.options.force_apply || element.hasNewChannel) {
 							socket.send(`#KDS-CHANNEL-SELECT VIDEO,${subset.channel}\r`)
 						}
 					})
