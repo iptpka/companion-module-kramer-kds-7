@@ -121,7 +121,11 @@ class KDS7Instance extends InstanceBase {
 
 	async queryChannelIds() {
 		const channelIdQueries = this.encoderSockets.map((socket) => {
-			return this.protocolQuery(socket, '#KDS-DEFINE-CHANNEL?\r', this.responseResolver(this, 'KDS-DEFINE-CHANNEL'))
+			return this.protocolQuery(
+				socket,
+				'#KDS-DEFINE-CHANNEL?\r',
+				this.simpleResponseResolver(this, 'KDS-DEFINE-CHANNEL')
+			)
 		})
 
 		return this.promiseAllOrTimeout(channelIdQueries, 5000, 'Channel query timeout!')
@@ -164,7 +168,7 @@ class KDS7Instance extends InstanceBase {
 		return { command: responseArray[0], parameters: responseArray[1] }
 	}
 
-	responseResolver(self, validationString) {
+	simpleResponseResolver(self, validationString) {
 		return function (socket, response, responsePromise) {
 			if (!response.includes(validationString)) {
 				if (response.includes('ERR')) {
@@ -185,8 +189,10 @@ class KDS7Instance extends InstanceBase {
 	async queryVideoWallPartition() {
 		let queries = []
 		this.decoderSockets.forEach((socket) => {
-			queries.push(this.protocolQuery(socket, '#VIDEO-WALL-SETUP?\r', this.responseResolver(this, 'VIDEO-WALL-SETUP')))
-			queries.push(this.protocolQuery(socket, '#VIEW-MOD?\r', this.responseResolver(this, 'VIEW-MOD')))
+			queries.push(
+				this.protocolQuery(socket, '#VIDEO-WALL-SETUP?\r', this.simpleResponseResolver(this, 'VIDEO-WALL-SETUP'))
+			)
+			queries.push(this.protocolQuery(socket, '#VIEW-MOD?\r', this.simpleResponseResolver(this, 'VIEW-MOD')))
 		})
 		return this.promiseAllOrTimeout(queries, 5000, 'Video Wall query timeout!')
 	}
@@ -292,6 +298,7 @@ class KDS7Instance extends InstanceBase {
 		socket.send(message)
 		return responsePromise.promise
 	}
+
 	async createConnections() {
 		if (!this.configOk) {
 			return
