@@ -39,11 +39,12 @@ class Element {
 //Keeps track of the 2d orthogonal bounding box that it's elements fit inside of.
 class Subset {
 	#hasNewChanges
-	constructor(id, maxX, maxY, elements, channel) {
+	constructor(id, maxX, maxY, elements, channel, isBackground) {
 		this.id = id
 		this.maxX = maxX
 		this.maxY = maxY
 		this.channel = channel
+		this.isBackground = isBackground
 		if (elements) {
 			this.elements = elements
 			this.elements.forEach((element) => element.changeOwner(this))
@@ -88,6 +89,16 @@ class Subset {
 	}
 
 	calculateBounds() {
+		if (this.isBackground) {
+			this.boundingBox = {
+				x1: 0,
+				y1: 0,
+				x2: this.maxX,
+				y2: this.maxY
+			}
+			this.#hasNewChanges = true
+			return
+		}
 		const oldBounds = this.boundingBox
 		if (this.elements.length === 0) {
 			this.boundingBox = undefined
@@ -154,6 +165,7 @@ class Subset {
 		if (this.elements.includes(element)) return
 		element.changeOwner(this)
 		this.elements.push(element)
+		if (this.isBackground) return
 		if (this.elements.length === 1 || !this.isElementInBounds(element)) {
 			this.adjustBounds()
 		}
@@ -183,8 +195,8 @@ export class VideoWall {
 		this.columns = columns
 		this.maxSubsets = rows * columns
 		this.wall = this.newWall(rows, columns)
-		const subset = new Subset(1, columns, rows, this.elements)
-		this.subsets = [subset]
+		this.subsets = []
+		this.addSubset(this.elements)
 		this.defaultChannel = defaultChannel
 	}
 
@@ -200,19 +212,21 @@ export class VideoWall {
 		return wall
 	}
 
-	addSubset(channel = this.defaultChannel) {
-		const subset = new Subset(this.subsets.length + 1, this.columns, this.rows, this.elements, channel)
+	addSubset(elements, channel = this.defaultChannel) {
+		const subset = new Subset(this.subsets.length + 1, this.columns, this.rows, elements, channel)
 		this.subsets.push(subset)
 		return subset
 	}
 
+	
+	
 	clear() {
 		this.subsets.forEach((subset) => {
 			subset.clear()
 		})
 		this.wall = this.newWall(this.rows, this.columns)
 		this.subsets = []
-		this.addSubset()
+		this.addSubset(this.elements)
 	}
 
 	removeEmptySubsets() {
