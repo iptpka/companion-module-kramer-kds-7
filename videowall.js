@@ -27,9 +27,9 @@ class Element {
 	changeOwner(newOwner) {
 		if (this.owner) {
 			this.owner.removeElement(this)
-		}
-		if (newOwner.channel != this.owner.channel) {
-			this.#hasNewChannel = true
+			if (newOwner.channel != this.owner.channel) {
+				this.#hasNewChannel = true
+			}
 		}
 		this.owner = newOwner
 	}
@@ -201,7 +201,7 @@ export class VideoWall {
 	}
 
 	addSubset(channel = this.defaultChannel) {
-		const subset = new Subset(this.subsets.length + 1, this.columns, this.rows, channel)
+		const subset = new Subset(this.subsets.length + 1, this.columns, this.rows, this.elements, channel)
 		this.subsets.push(subset)
 		return subset
 	}
