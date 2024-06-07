@@ -119,8 +119,8 @@ export function getActionDefinitions(self) {
 				const cmd = await self.parseVariablesInString(cmdContent)
 				const sockets = options.device_type == 'encoder' ? self.encoderSockets : self.decoderSockets
 				const deviceNumber = options.device_type == 'encoder' ? options.encoder : options.decoder
-				if (sockets !== undefined && sockets.at(parseInt(deviceNumber)).isConnected) {
-					let socket = sockets.at(parseInt(deviceNumber))
+				if (sockets !== undefined && sockets.at(parseInt(deviceNumber-1)).isConnected) {
+					let socket = sockets.at(parseInt(deviceNumber-1))
 					console.log(`Sending command to ${socket.label}:`, cmd)
 					socket.send(cmd)
 				} else {
@@ -355,11 +355,24 @@ export function getActionDefinitions(self) {
 					value: "Add a new subset into the module's internal video wall model.",
 					width: 12,
 				},
+				{
+					id: 'channel',
+					type: 'dropdown',
+					label: 'Channel',
+					choices: encoderChoices,
+					default: encoderDefault,
+				},
+				{
+					type: 'checkbox',
+					id: 'is_background',
+					label: "Is this used as a 'background'. If yes, will always act as if this area spans the whole wall, regardless of the actual dimensions of it's elements",
+					default: false,
+				},
 			],
 			callback: async (action) => {
 				if (!self.configOk || self.videowall === undefined) return
 				if (self.videowall.subsets.length < self.videowall.maxSubsets) {
-					const subset = self.videowall.addSubset()
+					const subset = self.videowall.addSubset(undefined, action.options.channel, action.options.is_background)
 					console.log(`Added new subset to internal video wall, id: ${subset.id}`)
 				}
 			},
