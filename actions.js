@@ -119,8 +119,8 @@ export function getActionDefinitions(self) {
 				const cmd = await self.parseVariablesInString(cmdContent)
 				const sockets = options.device_type == 'encoder' ? self.encoderSockets : self.decoderSockets
 				const deviceNumber = options.device_type == 'encoder' ? options.encoder : options.decoder
-				if (sockets !== undefined && sockets.at(parseInt(deviceNumber-1)).isConnected) {
-					let socket = sockets.at(parseInt(deviceNumber-1))
+				if (sockets !== undefined && sockets.at(parseInt(deviceNumber - 1)).isConnected) {
+					let socket = sockets.at(parseInt(deviceNumber - 1))
 					console.log(`Sending command to ${socket.label}:`, cmd)
 					socket.send(cmd)
 				} else {
@@ -205,14 +205,11 @@ export function getActionDefinitions(self) {
 	}
 
 	if (self.config.videowall && self.videowall !== undefined) {
-		function subsetChoiceArray() {
-			const subsets = self.videowall.subsets
-			return [...Array(self.videowall.subsets.length).keys()].map((x) => {
-				const subset = subsets.at(x)
-				return { id: subset.id, label: `${subset.id}: ${subset.elements.length} elements` }
-			})
-		}
-		const subsetChoices = subsetChoiceArray()
+		const subsets = self.videowall.subsets
+		const subsetChoices = [...Array(self.videowall.subsets.length).keys()].map((x) => {
+			const subset = subsets.at(x)
+			return { id: subset.id, label: `${subset.id}: ${subset.elements.length} elements` }
+		})
 		const subsetChoicesAddNew = subsetChoices.concat({ id: 'new', label: 'Add into new subset' })
 		subsetChoicesAddNew.push({ id: 'latest', label: 'Newest created subset' })
 		const defaultSubset = subsetChoices.at(0).id
@@ -365,7 +362,8 @@ export function getActionDefinitions(self) {
 				{
 					type: 'checkbox',
 					id: 'is_background',
-					label: "Is this used as a 'background'. If yes, will always act as if this area spans the whole wall, regardless of the actual dimensions of it's elements",
+					label:
+						"Is this used as a 'background'. If yes, will always act as if this area spans the whole wall, regardless of the actual dimensions of it's elements",
 					default: false,
 				},
 			],

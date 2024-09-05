@@ -94,7 +94,7 @@ class Subset {
 				x1: 0,
 				y1: 0,
 				x2: this.maxX,
-				y2: this.maxY
+				y2: this.maxY,
 			}
 			this.#hasNewChanges = true
 			return
@@ -217,7 +217,7 @@ export class VideoWall {
 		this.subsets.push(subset)
 		return subset
 	}
-	
+
 	clear() {
 		this.subsets.forEach((subset) => {
 			subset.clear()
