@@ -4,7 +4,7 @@ import { getActionDefinitions } from './actions.js'
 import { getFeedBackDefinitions } from './feedbacks.js'
 import { getVariableDefinitions } from './variables.js'
 import { ConfigFields } from './config.js'
-import { incrementedIP } from './utils.js'
+import { incrementedIP, promiseAllOrTimeout } from './utils.js'
 import { VideoWall } from './videowall.js'
 
 class KDS7Instance extends InstanceBase {
@@ -106,17 +106,10 @@ class KDS7Instance extends InstanceBase {
 			})
 		})
 
-		return this.promiseAllOrTimeout(handshakes, 5000, 'KDS handshake timeout!').then(() => {
+		return promiseAllOrTimeout(handshakes, 5000, 'KDS handshake timeout!').then(() => {
 			this.updateStatus('ok')
 			this.log('debug', 'All KDS devices connected')
 		})
-	}
-
-	async promiseAllOrTimeout(promises, milliseconds, timeoutMessage) {
-		const timeout = new Promise((_, reject) => {
-			setTimeout(reject, milliseconds, new Error(timeoutMessage))
-		})
-		return Promise.race([Promise.all(promises), timeout])
 	}
 
 	async queryChannelIds() {
@@ -128,7 +121,7 @@ class KDS7Instance extends InstanceBase {
 			)
 		})
 
-		return this.promiseAllOrTimeout(channelIdQueries, 5000, 'Channel query timeout!')
+		return promiseAllOrTimeout(channelIdQueries, 5000, 'Channel query timeout!')
 			.then((queryResponses) => {
 				new Map(queryResponses).forEach((response, encoderSocket) => {
 					encoderSocket.channelId = parseInt(response.parameters)
@@ -194,7 +187,7 @@ class KDS7Instance extends InstanceBase {
 			)
 			queries.push(this.protocolQuery(socket, '#VIEW-MOD?\r', this.simpleResponseResolver(this, 'VIEW-MOD')))
 		})
-		return this.promiseAllOrTimeout(queries, 5000, 'Video Wall query timeout!')
+		return promiseAllOrTimeout(queries, 5000, 'Video Wall query timeout!')
 	}
 
 	async updateVideoWall() {
