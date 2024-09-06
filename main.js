@@ -199,8 +199,13 @@ class KDS7Instance extends InstanceBase {
 			console.log("Bad videowall config! Rows and columns don't match the amount of decoder devices.")
 			return
 		}
-
-		this.videowall = new VideoWall(rows, columns)
+		var defaultChannel = this.config.defaultchannel
+		if (!this.encoderSockets.some(encoder => encoder.channelId === defaultChannel)) {
+			defaultChannel = this.encoderSockets.at(0).channelId;
+			this.log('warn', `No decoder matching "Default channel" ${this.config.defaultchannel} set in the configuration!`)
+			this.log('warn', `Setting default channel as ${defaultChannel}`)
+		}
+		this.videowall = new VideoWall(rows, columns, defaultChannel)
 
 		/* Determines the amount of separate subsets/subsets in the video wall.
 		 * Each new set of dimension values in a VIEW-MOD response from a decoder is a new subset.
@@ -302,7 +307,8 @@ class KDS7Instance extends InstanceBase {
 		try {
 			await this.verifyConnections()
 			await this.protocol3000Handshake()
-			await Promise.all([this.queryChannelIds(), this.updateVideoWall()])
+			await this.queryChannelIds() 
+			await this.updateVideoWall()
 			this.updateVariables()
 			this.updateActions()
 			this.sockets.forEach((socket) => {

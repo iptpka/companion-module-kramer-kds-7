@@ -212,7 +212,7 @@ export class VideoWall {
 		return wall
 	}
 
-	addSubset(elements, channel = this.defaultChannel, isBackground = false) {
+	addSubset(elements = undefined, channel = this.defaultChannel, isBackground = false) {
 		const subset = new Subset(this.subsets.length + 1, this.columns, this.rows, elements, channel, isBackground)
 		this.subsets.push(subset)
 		return subset
