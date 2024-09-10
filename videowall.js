@@ -50,12 +50,12 @@ class Subset {
 			this.elements.forEach((element) => element.changeOwner(this))
 			this.calculateBounds()
 			this.assignOutputIds()
-		} else if (isBackground){
+		} else if (isBackground) {
 			this.boundingBox = {
 				x1: 0,
 				y1: 0,
-				x2: this.maxX,
-				y2: this.maxY,
+				x2: this.maxX - 1,
+				y2: this.maxY - 1,
 			}
 			this.elements = []
 		} else {
@@ -101,8 +101,8 @@ class Subset {
 			this.boundingBox = {
 				x1: 0,
 				y1: 0,
-				x2: this.maxX,
-				y2: this.maxY,
+				x2: this.maxX - 1,
+				y2: this.maxY - 1,
 			}
 			this.#hasNewChanges = true
 			return
@@ -164,9 +164,20 @@ class Subset {
 	}
 
 	assignOutputIds() {
-		this.elements.forEach((element) => {
-			element.outputId = element.x - this.boundingBox.x1 + this.width * (element.y - this.boundingBox.y1) + 1
-		})
+		if (this.isBackground) {
+			for (let i = 1; i < elements.length; i++) {
+				const element = this.elements.find((element) => {
+					element.index === i
+				})
+				element.outputId = i
+			}
+
+				
+		} else {
+			this.elements.forEach((element) => {
+				element.outputId = element.x - this.boundingBox.x1 + this.width * (element.y - this.boundingBox.y1) + 1
+			})
+		}
 	}
 
 	addElement(element) {
