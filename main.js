@@ -199,9 +199,9 @@ class KDS7Instance extends InstanceBase {
 			console.log("Bad videowall config! Rows and columns don't match the amount of decoder devices.")
 			return
 		}
-		var defaultChannel = this.config.defaultchannel
-		if (!this.encoderSockets.some(encoder => encoder.channelId === defaultChannel)) {
-			defaultChannel = this.encoderSockets.at(0).channelId;
+		let defaultChannel = this.config.defaultchannel
+		if (!this.encoderSockets.some((encoder) => encoder.channelId === defaultChannel)) {
+			defaultChannel = this.encoderSockets.at(0).channelId
 			this.log('warn', `No decoder matching "Default channel" ${this.config.defaultchannel} set in the configuration!`)
 			this.log('warn', `Setting default channel as ${defaultChannel}`)
 		}
@@ -307,7 +307,7 @@ class KDS7Instance extends InstanceBase {
 		try {
 			await this.verifyConnections()
 			await this.protocol3000Handshake()
-			await this.queryChannelIds() 
+			await this.queryChannelIds()
 			await this.updateVideoWall()
 			this.updateVariables()
 			this.updateActions()
@@ -357,11 +357,16 @@ class KDS7Instance extends InstanceBase {
 
 	updateVariables() {
 		try {
-			this.setVariableValues({ selected_channel: this.encoderSockets.at(0).channelId })
-			this.setVariableValues({ channel_amount: this.encoderSockets.length })
+			this.setVariableValues({
+				selected_channel: this.encoderSockets.at(0).channelId,
+				channel_amount: this.encoderSockets.length,
+				default_channel: this.config.defaultchannel,
+			})
 			if (this.config.videowall) {
-				this.setVariableValues({ selected_subset: this.videowall.subsets.at(0).id })
-				this.setVariableValues({ subset_amount: this.videowall.subsets.length.toString() })
+				this.setVariableValues({
+					selected_subset: this.videowall.subsets.at(0).id,
+					subset_amount: this.videowall.subsets.length.toString(),
+				})
 			}
 		} catch (error) {
 			this.log('error', error.message)

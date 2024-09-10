@@ -50,6 +50,13 @@ class Subset {
 			this.elements.forEach((element) => element.changeOwner(this))
 			this.calculateBounds()
 			this.assignOutputIds()
+		} else if (isBackground){
+			this.boundingBox = {
+				x1: 0,
+				y1: 0,
+				x2: this.maxX,
+				y2: this.maxY,
+			}
 		} else {
 			this.boundingBox = undefined
 			this.elements = []

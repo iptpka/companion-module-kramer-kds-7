@@ -296,13 +296,13 @@ export function getActionDefinitions(self) {
 			},
 		}
 		actions.add_to_subset = {
-			name: 'Add Decoder to Subset',
+			name: 'Add Decoders to Subset',
 			options: [
 				{
 					type: 'static-text',
 					id: 'title',
 					label: 'Information',
-					value: `Add a decoder to a subset of the module's internal video wall model. This action does NOT send any commands by itself. 
+					value: `Add decoders to a subset of the module's internal video wall model. This action does NOT send any commands by itself. 
 						Select 'Add into new subset' from the dropdown to create a new subset and add the decoder into it.
 						The 'Newest created subset' option can be used to chain together actions where the first one creates a new subset and the others are added into that.`,
 					width: 12,
@@ -315,24 +315,54 @@ export function getActionDefinitions(self) {
 					default: defaultSubset,
 				},
 				{
-					id: 'decoder',
-					type: 'dropdown',
+					id: 'decoders',
+					type: 'multidropdown',
 					label: 'Decoder number',
 					choices: decoderChoices,
 					default: decoderDefault,
+				},
+				{
+					id: 'channel',
+					type: 'dropdown',
+					label: 'Channel',
+					choices: encoderChoices,
+					default: encoderDefault,
+					isVisible: (options) => options.subset_selection === 'new',
+				},
+				{
+					type: 'checkbox',
+					id: 'is_background',
+					label:
+						"Area is background",
+					tooltip:
+						"Is this used as a 'background'. If yes, will always act as if this area spans the whole wall, regardless of the actual dimensions of it's elements",
+					default: false,
+					isVisible: (options) => options.subset_selection === 'new',
 				},
 			],
 			callback: async (action) => {
 				if (!self.configOk || self.videowall === undefined) return
 				const options = action.options
-				const subset =
-					options.subset_selection === 'new'
-						? self.videowall.addSubset()
-						: options.subset_selection === 'latest'
-						? self.videowall.subsets.at(-1)
-						: self.videowall.subsets.find((subset) => subset.id === options.subset_selection)
-				const element = self.videowall.elements.find((element) => element.index == options.decoder - 1)
-				subset.addElement(element)
+				console.log(options.decoders)
+				let subset
+				switch (options.subset_selection) {
+					case 'new':
+						let channel = options.channel
+						let is_background = options.is_background
+						subset = self.videowall.addSubset(undefined, channel, is_background)
+						break
+					case 'latest':
+						subset = self.videowall.subsets.at(-1)
+						break
+					default:
+						subset = self.videowall.subsets.find((subset) => subset.id === options.subset_selection)
+				}
+				options.decoders.forEach((decoder) => {
+					const element = self.videowall.elements.find((element) => element.index == decoder - 1)
+					if (element != null && element != undefined) {
+						subset.addElement(element)
+					}
+				})
 				if (
 					self.videowall.removeEmptySubsets() &&
 					parseInt(self.getVariableValue('selected_subset')) >= self.videowall.subsets.length
