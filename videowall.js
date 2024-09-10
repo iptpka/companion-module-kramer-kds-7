@@ -57,6 +57,7 @@ class Subset {
 				x2: this.maxX,
 				y2: this.maxY,
 			}
+			this.elements = []
 		} else {
 			this.boundingBox = undefined
 			this.elements = []
@@ -227,8 +228,11 @@ export class VideoWall {
 
 	clear() {
 		this.subsets.forEach((subset) => {
-			subset.clear()
+			if (subset !== undefined && subset !== null) {
+				subset.clear()
+			}
 		})
+		this.subsets.length = 0
 		this.wall = this.newWall(this.rows, this.columns)
 		this.subsets = []
 		this.addSubset(this.elements)
