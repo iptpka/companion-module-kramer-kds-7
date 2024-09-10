@@ -164,27 +164,19 @@ class Subset {
 	}
 
 	assignOutputIds() {
-		if (this.isBackground) {
-			for (let i = 1; i < elements.length; i++) {
-				const element = this.elements.find((element) => {
-					element.index === i
-				})
-				element.outputId = i
-			}
-
-				
-		} else {
-			this.elements.forEach((element) => {
-				element.outputId = element.x - this.boundingBox.x1 + this.width * (element.y - this.boundingBox.y1) + 1
-			})
-		}
+		this.elements.forEach((element) => {
+			element.outputId = element.x - this.boundingBox.x1 + this.width * (element.y - this.boundingBox.y1) + 1
+		})
 	}
 
 	addElement(element) {
 		if (this.elements.includes(element)) return
 		element.changeOwner(this)
 		this.elements.push(element)
-		if (this.isBackground) return
+		if (this.isBackground) {
+			element.outputId = element.index + 1
+			return
+		}
 		if (this.elements.length === 1 || !this.isElementInBounds(element)) {
 			this.adjustBounds()
 		}
