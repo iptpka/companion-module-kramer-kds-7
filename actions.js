@@ -205,24 +205,24 @@ export function getActionDefinitions(self) {
 	}
 
 	if (self.config.videowall && self.videowall !== undefined) {
-		const subsets = self.videowall.subsets
-		const subsetChoices = [...Array(self.videowall.subsets.length).keys()].map((x) => {
-			const subset = subsets.at(x)
-			return { id: subset.id, label: `${subset.id}: ${subset.elements.length} elements` }
+		const areas = self.videowall.areas
+		const areaChoices = [...Array(self.videowall.areas.length).keys()].map((x) => {
+			const area = areas.at(x)
+			return { id: area.id, label: `${area.id}: ${area.elements.length} elements` }
 		})
-		const subsetChoicesAddNew = subsetChoices.concat({ id: 'new', label: 'Add into new subset' })
-		subsetChoicesAddNew.push({ id: 'latest', label: 'Newest created subset' })
-		const defaultSubset = subsetChoices.at(0).id
+		const areaChoicesAddNew = areaChoices.concat({ id: 'new', label: 'Add into new area' })
+		areaChoicesAddNew.push({ id: 'latest', label: 'Newest created area' })
+		const defaultArea = areaChoices.at(0).id
 
-		actions.subset_multicast = {
-			name: 'Multicast Protocol 3000 Command to Subset',
+		actions.area_multicast = {
+			name: 'Multicast Protocol 3000 Command to Area',
 			options: [
 				{
 					type: 'static-text',
 					id: 'title',
 					label: 'Information',
 					value:
-						'Multicast a Protocol 3000 command to all decoders in selected video wall subset. Commands are automatically prefixed & suffixed accordingly, you only need the command name and parameters.',
+						'Multicast a Protocol 3000 command to all decoders in selected video wall area. Commands are automatically prefixed & suffixed accordingly, you only need the command name and parameters.',
 					width: 12,
 				},
 				{
@@ -262,15 +262,15 @@ export function getActionDefinitions(self) {
 				{
 					type: 'checkbox',
 					id: 'use_current',
-					label: 'Use currently selected subset',
+					label: 'Use currently selected area',
 					default: true,
 				},
 				{
-					id: 'subset_selection',
+					id: 'area_selection',
 					type: 'dropdown',
-					label: 'Subset',
-					choices: subsetChoices,
-					default: defaultSubset,
+					label: 'Area',
+					choices: areaChoices,
+					default: defaultArea,
 					isVisible: (options) => !options.use_current,
 				},
 			],
@@ -281,11 +281,11 @@ export function getActionDefinitions(self) {
 					? `#${options.command}\r`
 					: `${options.command_selection} ${options.parameters}\r`
 				const cmd = await self.parseVariablesInString(cmdContent)
-				const selectionId = options.use_current ? self.getVariableValue('selected_subset') : options.subset_selection
-				const subset = self.videowall.subsets.find((subset) => subset.id === selectionId)
-				console.log(`Multicasting to all decoders in subset ${subset.id} command:`, cmd)
+				const selectionId = options.use_current ? self.getVariableValue('selected_area') : options.area_selection
+				const area = self.videowall.areas.find((area) => area.id === selectionId)
+				console.log(`Multicasting to all decoders in area ${area.id} command:`, cmd)
 
-				subset.elements.forEach((element) => {
+				area.elements.forEach((element) => {
 					const socket = self.decoderSockets.find((socket) => socket.id === element.index + 1)
 					if (!socket.isConnected) {
 						console.log(`Socket for ${socket.label} not connected!`)
@@ -295,24 +295,24 @@ export function getActionDefinitions(self) {
 				})
 			},
 		}
-		actions.add_to_subset = {
-			name: 'Add Decoders to Subset',
+		actions.add_to_area = {
+			name: 'Add Decoders to Area',
 			options: [
 				{
 					type: 'static-text',
 					id: 'title',
 					label: 'Information',
-					value: `Add decoders to a subset of the module's internal video wall model. This action does NOT send any commands by itself. 
-						Select 'Add into new subset' from the dropdown to create a new subset and add the decoder into it.
-						The 'Newest created subset' option can be used to chain together actions where the first one creates a new subset and the others are added into that.`,
+					value: `Add decoders to a area of the module's internal video wall model. This action does NOT send any commands by itself. 
+						Select 'Add into new area' from the dropdown to create a new area and add the decoder into it.
+						The 'Newest created area' option can be used to chain together actions where the first one creates a new area and the others are added into that.`,
 					width: 12,
 				},
 				{
-					id: 'subset_selection',
+					id: 'area_selection',
 					type: 'dropdown',
-					label: 'Subset',
-					choices: subsetChoicesAddNew,
-					default: defaultSubset,
+					label: 'Area',
+					choices: areaChoicesAddNew,
+					default: defaultArea,
 				},
 				{
 					id: 'decoders',
@@ -327,7 +327,7 @@ export function getActionDefinitions(self) {
 					label: 'Channel',
 					choices: encoderChoices,
 					default: encoderDefault,
-					isVisible: (options) => options.subset_selection === 'new',
+					isVisible: (options) => options.area_selection === 'new',
 				},
 				{
 					type: 'checkbox',
@@ -337,49 +337,49 @@ export function getActionDefinitions(self) {
 					tooltip:
 						"Is this used as a 'background'. If yes, will always act as if this area spans the whole wall, regardless of the actual dimensions of it's elements",
 					default: false,
-					isVisible: (options) => options.subset_selection === 'new',
+					isVisible: (options) => options.area_selection === 'new',
 				},
 			],
 			callback: async (action) => {
 				if (!self.configOk || self.videowall === undefined) return
 				const options = action.options
 				console.log(options.decoders)
-				let subset
-				switch (options.subset_selection) {
+				let area
+				switch (options.area_selection) {
 					case 'new':
 						let channel = options.channel
 						let is_background = options.is_background
-						subset = self.videowall.addSubset(undefined, channel, is_background)
+						area = self.videowall.addArea(undefined, channel, is_background)
 						break
 					case 'latest':
-						subset = self.videowall.subsets.at(-1)
+						area = self.videowall.areas.at(-1)
 						break
 					default:
-						subset = self.videowall.subsets.find((subset) => subset.id === options.subset_selection)
+						area = self.videowall.areas.find((area) => area.id === options.area_selection)
 				}
 				options.decoders.forEach((decoder) => {
 					const element = self.videowall.elements.find((element) => element.index == decoder - 1)
 					if (element != null && element != undefined) {
-						subset.addElement(element)
+						area.addElement(element)
 					}
 				})
 				if (
-					self.videowall.removeEmptySubsets() &&
-					parseInt(self.getVariableValue('selected_subset')) >= self.videowall.subsets.length
+					self.videowall.removeEmptyAreas() &&
+					parseInt(self.getVariableValue('selected_area')) >= self.videowall.areas.length
 				) {
-					self.setVariableValues({ selected_subset: self.videowall.subsets.at(0).id })
+					self.setVariableValues({ selected_area: self.videowall.areas.at(0).id })
 				}
-				self.setVariableValues({ subset_amount: self.videowall.subsets.length })
+				self.setVariableValues({ area_amount: self.videowall.areas.length })
 			},
 		}
-		actions.new_subset = {
-			name: 'Add new subset',
+		actions.new_area = {
+			name: 'Add new area',
 			options: [
 				{
 					type: 'static-text',
 					id: 'title',
 					label: 'Information',
-					value: "Add a new subset into the module's internal video wall model.",
+					value: "Add a new area into the module's internal video wall model.",
 					width: 12,
 				},
 				{
@@ -399,35 +399,35 @@ export function getActionDefinitions(self) {
 			],
 			callback: async (action) => {
 				if (!self.configOk || self.videowall === undefined) return
-				if (self.videowall.subsets.length < self.videowall.maxSubsets) {
-					const subset = self.videowall.addSubset(undefined, action.options.channel, action.options.is_background)
-					console.log(`Added new subset to internal video wall, id: ${subset.id}`)
+				if (self.videowall.areas.length < self.videowall.maxAreas) {
+					const area = self.videowall.addArea(undefined, action.options.channel, action.options.is_background)
+					console.log(`Added new area to internal video wall, id: ${area.id}`)
 				}
 			},
 		}
-		actions.change_subset_channel = {
-			name: 'Change subset channel',
+		actions.change_area_channel = {
+			name: 'Change area channel',
 			options: [
 				{
 					type: 'static-text',
 					id: 'title',
 					label: 'Information',
-					value: `Change the input channel for all decoders in a video wall subset. 'Use currently selected channel' gets the subset id from the selected_subset variable. Use the action 'Cycle subset selection' to change the variable's value.`,
+					value: `Change the input channel for all decoders in a video wall area. 'Use currently selected channel' gets the area id from the selected_area variable. Use the action 'Cycle area selection' to change the variable's value.`,
 					width: 12,
 				},
 				{
 					type: 'checkbox',
-					id: 'use_selected_subset',
-					label: 'Use currently selected subset',
+					id: 'use_selected_area',
+					label: 'Use currently selected area',
 					default: true,
 				},
 				{
-					id: 'subset_selection',
+					id: 'area_selection',
 					type: 'dropdown',
-					label: 'Subset',
-					choices: subsetChoices,
-					default: defaultSubset,
-					isVisible: (options) => !options.use_selected_subset,
+					label: 'Area',
+					choices: areaChoices,
+					default: defaultArea,
+					isVisible: (options) => !options.use_selected_area,
 				},
 				{
 					type: 'checkbox',
@@ -447,15 +447,15 @@ export function getActionDefinitions(self) {
 			callback: async (action) => {
 				if (!self.configOk || self.videowall === undefined) return
 				const options = action.options
-				const subsetSelectionId = options.use_selected_subset
-					? self.getVariableValue('selected_subset')
-					: options.subset_selection
-				const subset = self.videowall.subsets.find((subset) => subset.id === subsetSelectionId)
+				const areaSelectionId = options.use_selected_area
+					? self.getVariableValue('selected_area')
+					: options.area_selection
+				const area = self.videowall.areas.find((area) => area.id === areaSelectionId)
 				const channelId = options.use_selected_channel ? self.getVariableValue('selected_channel') : options.channel
 
-				console.log(`Switching subset ${subset.id} channel to ${channelId}`)
+				console.log(`Switching area ${area.id} channel to ${channelId}`)
 
-				subset.elements.forEach((element) => {
+				area.elements.forEach((element) => {
 					const socket = self.decoderSockets.find((socket) => socket.id === element.index + 1)
 					if (!socket.isConnected) {
 						console.log(`Socket for ${socket.label} not connected!`)
@@ -484,18 +484,18 @@ export function getActionDefinitions(self) {
 			],
 			callback: async (action) => {
 				if (!self.configOk || self.videowall === undefined) return
-				for (const subset of self.videowall.subsets) {
-					if (!action.options.force_apply && !subset.hasNewChanges) continue
-					subset.elements.forEach((element) => {
+				for (const area of self.videowall.areas) {
+					if (!action.options.force_apply && !area.hasNewChanges) continue
+					area.elements.forEach((element) => {
 						const socket = self.decoderSockets.find((socket) => socket.id === element.index + 1)
 						if (!socket.isConnected || !self.configOk) {
 							console.log(`Socket for ${socket.label} not connected!`)
 							return
 						}
-						socket.send(`#VIEW-MOD 15,${subset.width},${subset.height}\r`)
+						socket.send(`#VIEW-MOD 15,${area.width},${area.height}\r`)
 						socket.send(`#VIDEO-WALL-SETUP ${element.outputId},0\r`)
 						if (action.options.force_apply || element.hasNewChannel) {
-							socket.send(`#KDS-CHANNEL-SELECT VIDEO,${subset.channel}\r`)
+							socket.send(`#KDS-CHANNEL-SELECT VIDEO,${area.channel}\r`)
 						}
 					})
 				}
@@ -509,7 +509,7 @@ export function getActionDefinitions(self) {
 					id: 'title',
 					label: 'Information',
 					value:
-						"Clears all subsets from the current internal video wall model, i.e. results in only one view area spanning the entire video wall. Chain with the 'apply partitioning' action to reset the actual video wall.",
+						"Clears all areas from the current internal video wall model, i.e. results in only one view area spanning the entire video wall. Chain with the 'apply partitioning' action to reset the actual video wall.",
 					width: 12,
 				},
 			],
@@ -517,8 +517,8 @@ export function getActionDefinitions(self) {
 				if (self.videowall === undefined || !self.configOk) return
 				console.log('Resetting video wall partition')
 				self.videowall.clear()
-				self.setVariableValues({ selected_subset: self.videowall.subsets.at(0).id })
-				self.setVariableValues({ subset_amount: 1 })
+				self.setVariableValues({ selected_area: self.videowall.areas.at(0).id })
+				self.setVariableValues({ area_amount: 1 })
 			},
 		}
 		actions.sync_stuff = {
@@ -537,27 +537,27 @@ export function getActionDefinitions(self) {
 				self.updateFeedbacks()
 			},
 		}
-		actions.cycle_selected_subset = {
-			name: 'Cycle subset selection',
+		actions.cycle_selected_area = {
+			name: 'Cycle area selection',
 			options: [
 				{
 					type: 'static-text',
 					id: 'title',
 					label: 'Information',
 					value:
-						'Changes the selected subset variable for the next/previous one. Loops around if next/previous is out of bounds.',
+						'Changes the selected area variable for the next/previous one. Loops around if next/previous is out of bounds.',
 					width: 12,
 				},
 				DirectionChoice,
 			],
 			callback: async (action) => {
-				const selected_subset = parseInt(self.getVariableValue('selected_subset'))
-				if (selected_subset === NaN || self.videowall.subsets.length === 1 || !self.configOk) {
+				const selected_area = parseInt(self.getVariableValue('selected_area'))
+				if (selected_area === NaN || self.videowall.areas.length === 1 || !self.configOk) {
 					return
 				}
 				const direction = action.options.direction === 'next' ? 1 : -1
 				self.setVariableValues({
-					selected_subset: self.videowall.subsets.at((selected_subset - 1 + direction) % self.videowall.subsets.length)
+					selected_area: self.videowall.areas.at((selected_area - 1 + direction) % self.videowall.areas.length)
 						.id,
 				})
 			},
@@ -617,11 +617,11 @@ export function getActionDefinitions(self) {
 				if (self.videowall === undefined) return
 				console.log(self.videowall)
 				console.log(self.videowall.elements)
-				console.log(self.videowall.subsets)
-				self.videowall.subsets.forEach((subset) => {
-					console.log(`subset ${subset.id} has changes?: ${subset.peekChanges()}`)
+				console.log(self.videowall.areas)
+				self.videowall.areas.forEach((area) => {
+					console.log(`area ${area.id} has changes?: ${area.peekChanges()}`)
 				})
-				console.log(`Subset amount: ${self.videowall.subsets.length}`)
+				console.log(`Area amount: ${self.videowall.areas.length}`)
 			},
 		}
 	}

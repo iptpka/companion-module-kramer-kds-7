@@ -117,7 +117,7 @@ class KDS7Instance extends InstanceBase {
 			return this.protocolQuery(
 				socket,
 				'#KDS-DEFINE-CHANNEL?\r',
-				this.simpleResponseResolver(this, 'KDS-DEFINE-CHANNEL')
+				this.simpleP3KResponseResolver(this, 'KDS-DEFINE-CHANNEL')
 			)
 		})
 
@@ -161,7 +161,7 @@ class KDS7Instance extends InstanceBase {
 		return { command: responseArray[0], parameters: responseArray[1] }
 	}
 
-	simpleResponseResolver(self, validationString) {
+	simpleP3KResponseResolver(self, validationString) {
 		return function (socket, response, responsePromise) {
 			if (!response.includes(validationString)) {
 				if (response.includes('ERR')) {
@@ -177,17 +177,32 @@ class KDS7Instance extends InstanceBase {
 	/**
 	 * Queries all the decoders for their VIDEO-WALL-SETUP and VIEW-MOD values
 	 * to determine how the video wall is partitioned into different views
-	 * and builds a matching VideoWall instance.
+	 * and builds a matching Videowall instance.
 	 */
-	async queryVideoWallPartition() {
+	async queryVideoWallPartitioning() {
 		let queries = []
 		this.decoderSockets.forEach((socket) => {
 			queries.push(
-				this.protocolQuery(socket, '#VIDEO-WALL-SETUP?\r', this.simpleResponseResolver(this, 'VIDEO-WALL-SETUP'))
+				this.protocolQuery(socket, '#VIDEO-WALL-SETUP?\r', this.simpleP3KResponseResolver(this, 'VIDEO-WALL-SETUP'))
 			)
-			queries.push(this.protocolQuery(socket, '#VIEW-MOD?\r', this.simpleResponseResolver(this, 'VIEW-MOD')))
+			queries.push(this.protocolQuery(socket, '#VIEW-MOD?\r', this.simpleP3KResponseResolver(this, 'VIEW-MOD')))
 		})
 		return promiseAllOrTimeout(queries, 5000, 'Video Wall query timeout!')
+	}
+
+	async queryChannelsInUse() {
+		let queries = []
+		this.videowall.areas.forEach((area) => {
+			const socket = this.decoderSockets.find((socket) => socket.id === area.elements.at(0).index + 1)
+			queries.push(
+				this.protocolQuery(
+					socket,
+					'#KDS-CHANNEL-SELECT? video\r',
+					this.simpleP3KResponseResolver(this, 'KDS-CHANNEL-SELECT')
+				)
+			)
+		})
+		return promiseAllOrTimeout(queries, 5000, 'Video wall channel in use query timeout!')
 	}
 
 	async updateVideoWall() {
@@ -202,17 +217,17 @@ class KDS7Instance extends InstanceBase {
 		let defaultChannel = this.config.defaultchannel
 		if (!this.encoderSockets.some((encoder) => encoder.channelId === defaultChannel)) {
 			defaultChannel = this.encoderSockets.at(0).channelId
-			this.log('warn', `No decoder matching "Default channel" ${this.config.defaultchannel} set in the configuration!`)
+			this.log('warn', `No encoder matching "Default channel" ${this.config.defaultchannel} set in the configuration!`)
 			this.log('warn', `Setting default channel as ${defaultChannel}`)
 		}
 		this.videowall = new VideoWall(rows, columns, defaultChannel)
 
-		/* Determines the amount of separate subsets/subsets in the video wall.
-		 * Each new set of dimension values in a VIEW-MOD response from a decoder is a new subset.
-		 * If a subset already exists for a certain set of dimensions, check if that subset already contains
-		 * the current decoders VIDEO-WALL-SETUP outputId value. If not, add the decoder to that set, else make a new subset for it.
+		/* Determines the amount of separate areas in the video wall.
+		 * Each new set of dimension values in a VIEW-MOD response from a decoder is a new area.
+		 * If a area already exists for a certain set of dimensions, check if that area already contains
+		 * the current decoder's VIDEO-WALL-SETUP outputId value. If not, add the decoder to that set, else make a new area for it.
 		 */
-		return this.queryVideoWallPartition()
+		await this.queryVideoWallPartitioning()
 			.then((queryResponses) => {
 				const mergedResponses = new Map()
 				queryResponses.forEach((queryResponse) => {
@@ -224,40 +239,58 @@ class KDS7Instance extends InstanceBase {
 						mergedResponses.get(socketId).set(response.command, response.parameters)
 					}
 				})
-				const viewSubsets = new Map()
+				const viewAreas = new Map()
 				mergedResponses.forEach((responses, socketId) => {
 					const layout = responses.get('VIEW-MOD')
 					const outputId = responses.get('VIDEO-WALL-SETUP').split(',')[0]
 					let i = 0
 					while (true) {
-						const subsetName = `${layout} + ${i}`
-						if (!viewSubsets.has(subsetName)) {
-							// New subset
-							viewSubsets.set(subsetName, new Map([[outputId, socketId]]))
+						const areaName = `${layout} + ${i}`
+						if (!viewAreas.has(areaName)) {
+							// New area
+							viewAreas.set(areaName, new Map([[outputId, socketId]]))
 							break
 						}
-						if (!viewSubsets.get(subsetName).has(outputId)) {
-							// New decoder in subset
-							viewSubsets.get(subsetName).set(outputId, socketId)
+						if (!viewAreas.get(areaName).has(outputId)) {
+							// New decoder in area
+							viewAreas.get(areaName).set(outputId, socketId)
 							break
 						}
-						// Subset with this layout existed and alread had a decoder with this outputId,
-						// so this decoder must be part of another subset
+						// Area with this layout existed and already had a decoder with this outputId,
+						// so this decoder must be part of another area
 						i++
 					}
 				})
-				// Generate a new video wall subset for each unique subset detected and add all its elements to it.
-				viewSubsets.forEach((IdPair) => {
-					const subset = this.videowall.addSubset()
+				// Generate a new video wall area for each unique area detected and add all of its elements to it.
+				viewAreas.forEach((IdPair) => {
+					const area = this.videowall.addArea()
 					IdPair.forEach((socketId) => {
-						subset.addElement(this.videowall.elements.find((element) => element.index === socketId - 1))
+						area.addElement(this.videowall.elements.find((element) => element.index === socketId - 1))
 					})
 				})
-				this.videowall.removeEmptySubsets()
+				this.videowall.removeEmptyAreas()
 			})
 			.catch((error) => {
 				this.log('error', error.message)
 			})
+			
+		return this.queryChannelsInUse().then(async (queryResponses) => {
+			queryResponses.forEach(async (queryResponse) => {
+				try {
+					const socketId = queryResponse[0].id
+					const channelId = parseInt(queryResponse[1].parameters.split(',')[1])
+					const area = this.videowall.elements.find((element) => element.index === socketId - 1).owner
+					area.channel = channelId
+					this.log('warn', `${area.channel}`)
+				} catch (error) {
+					this.log('error', error.message)
+				}
+
+
+			})
+		}).catch((error) => {
+			this.log('error', error.message)
+		})
 	}
 
 	/**
@@ -301,6 +334,7 @@ class KDS7Instance extends InstanceBase {
 		if (!this.configOk) {
 			return
 		}
+
 		this.updateStatus(InstanceStatus.Connecting)
 		this.initTCP()
 		this.updateVariableDefinitions()
@@ -311,6 +345,7 @@ class KDS7Instance extends InstanceBase {
 			await this.updateVideoWall()
 			this.updateVariables()
 			this.updateActions()
+			this.updateFeedbacks()
 			this.sockets.forEach((socket) => {
 				socket.logAsInfo = true
 			})
@@ -364,8 +399,8 @@ class KDS7Instance extends InstanceBase {
 			})
 			if (this.config.videowall) {
 				this.setVariableValues({
-					selected_subset: this.videowall.subsets.at(0).id,
-					subset_amount: this.videowall.subsets.length.toString(),
+					selected_area: this.videowall.areas.at(0).id,
+					area_amount: this.videowall.areas.length.toString(),
 				})
 			}
 		} catch (error) {

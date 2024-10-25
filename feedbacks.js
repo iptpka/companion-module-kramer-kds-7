@@ -1,28 +1,45 @@
 import { combineRgb } from '@companion-module/base'
 
-export async function getFeedBackDefinitions(self) {
-	return {
-		ChannelState: {
-			name: 'Example Feedback',
+export function getFeedBackDefinitions(self) {
+	if (!self.configOk) return {}
+	const encoderChoices = self.encoderSockets.map((encoder) => ({
+		id: encoder.channelId,
+		label: `Channel ${encoder.channelId}`,
+	}))
+	const defaultEncoder = encoderChoices.at(0).id
+	const areas = self.videowall.areas
+	const areaChoices = [...Array(self.videowall.areas.length).keys()].map((x) => {
+		const area = areas.at(x)
+		return { id: area.id, label: `${area.id}: ${area.elements.length} elements` }
+	})
+	const defaultArea = areaChoices.at(0).id
+	const feedbacks = {
+		AreaChannel: {
+			name: 'Area: Check channel',
 			type: 'boolean',
-			label: 'Channel State',
 			defaultStyle: {
 				bgcolor: combineRgb(255, 0, 0),
 				color: combineRgb(0, 0, 0),
 			},
 			options: [
 				{
-					id: 'num',
-					type: 'number',
-					label: 'Test',
-					default: 5,
-					min: 0,
-					max: 10,
+					id: 'area',
+					type: 'dropdown',
+					label: 'Area',
+					choices: areaChoices,
+					default: defaultArea,
 				},
+				{
+					id: 'channel',
+					type: 'dropdown',
+					label: 'Channel',
+					choices: encoderChoices,
+					default: defaultEncoder,
+				}
+
 			],
 			callback: (feedback) => {
-				console.log('Hello world!', feedback.options.num)
-				if (feedback.options.num > 5) {
+				if (self.videowall.areas.at(feedback.options.area - 1).channel === feedback.options.channel) {
 					return true
 				} else {
 					return false
@@ -30,4 +47,5 @@ export async function getFeedBackDefinitions(self) {
 			},
 		},
 	}
+	return feedbacks
 }

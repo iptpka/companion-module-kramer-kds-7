@@ -37,7 +37,7 @@ class Element {
 
 //Disjoint set. Owns unique matrix elements that can only exist in one subset at a time.
 //Keeps track of the 2d orthogonal bounding box that it's elements fit inside of.
-class Subset {
+class Area {
 	#hasNewChanges
 	constructor(id, maxX, maxY, elements, channel, isBackground) {
 		this.id = id
@@ -110,7 +110,7 @@ class Subset {
 		const oldBounds = this.boundingBox
 		if (this.elements.length === 0) {
 			this.boundingBox = undefined
-			// Can't apply changes for an empty subset so no need to check for them
+			// Can't apply changes for an empty area so no need to check for them
 			return
 		}
 		if (this.elements.length === 1) {
@@ -204,10 +204,10 @@ export class VideoWall {
 	constructor(rows, columns, defaultChannel) {
 		this.rows = rows
 		this.columns = columns
-		this.maxSubsets = rows * columns
+		this.maxAreas = rows * columns
 		this.wall = this.newWall(rows, columns)
-		this.subsets = []
-		this.addSubset(this.elements)
+		this.areas = []
+		this.addArea(this.elements)
 		this.defaultChannel = defaultChannel
 	}
 
@@ -223,30 +223,30 @@ export class VideoWall {
 		return wall
 	}
 
-	addSubset(elements = undefined, channel = this.defaultChannel, isBackground = false) {
-		const subset = new Subset(this.subsets.length + 1, this.columns, this.rows, elements, channel, isBackground)
-		this.subsets.push(subset)
-		return subset
+	addArea(elements = undefined, channel = this.defaultChannel, isBackground = false) {
+		const area = new Area(this.areas.length + 1, this.columns, this.rows, elements, channel, isBackground)
+		this.areas.push(area)
+		return area
 	}
 
 	clear() {
-		this.subsets.forEach((subset) => {
-			if (subset !== undefined && subset !== null) {
-				subset.clear()
+		this.areas.forEach((area) => {
+			if (area !== undefined && area !== null) {
+				area.clear()
 			}
 		})
-		this.subsets.length = 0
+		this.areas.length = 0
 		this.wall = this.newWall(this.rows, this.columns)
-		this.subsets = []
-		this.addSubset(this.elements)
+		this.areas = []
+		this.addArea(this.elements)
 	}
 
-	removeEmptySubsets() {
-		const hasEmpties = this.subsets.some((subset) => subset.elements.length === 0)
+	removeEmptyAreas() {
+		const hasEmpties = this.areas.some((area) => area.elements.length === 0)
 		if (!hasEmpties) return false
-		this.subsets = this.subsets.filter((subset) => subset.elements.length > 0)
-		this.subsets.forEach((subset, index) => {
-			subset.id = index + 1
+		this.areas = this.areas.filter((area) => area.elements.length > 0)
+		this.areas.forEach((area, index) => {
+			area.id = index + 1
 		})
 		return true
 	}
