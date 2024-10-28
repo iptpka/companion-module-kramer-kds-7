@@ -1,7 +1,7 @@
 import { InstanceBase, runEntrypoint, InstanceStatus, TCPHelper } from '@companion-module/base'
 import { default as UpgradeScripts } from './upgrades.js'
 import { getActionDefinitions } from './actions.js'
-import { getFeedBackDefinitions } from './feedbacks.js'
+import { getFeedbackDefinitions } from './feedbacks.js'
 import { getVariableDefinitions } from './variables.js'
 import { ConfigFields } from './config.js'
 import { incrementedIP, promiseAllOrTimeout } from './utils.js'
@@ -20,6 +20,7 @@ class KDS7Instance extends InstanceBase {
 		this.encoderSockets = []
 		this.decoderSockets = []
 		this.configOk = false
+		this.channels = []
 	}
 
 	get sockets() {
@@ -124,7 +125,9 @@ class KDS7Instance extends InstanceBase {
 		return promiseAllOrTimeout(channelIdQueries, 5000, 'Channel query timeout!')
 			.then((queryResponses) => {
 				new Map(queryResponses).forEach((response, encoderSocket) => {
-					encoderSocket.channelId = parseInt(response.parameters)
+					const channelId = parseInt(response.parameters)
+					encoderSocket.channelId = channelId
+					this.channels.push(channelId)
 				})
 			})
 			.catch((error) => {
@@ -383,7 +386,9 @@ class KDS7Instance extends InstanceBase {
 	}
 
 	updateFeedbacks() {
-		this.setFeedbackDefinitions(getFeedBackDefinitions(this))
+		const feedBackDefinitions = getFeedbackDefinitions(this)
+		this.setFeedbackDefinitions(feedBackDefinitions)
+		this.checkFeedbacks(...Object.keys(feedBackDefinitions))
 	}
 
 	updateVariableDefinitions() {

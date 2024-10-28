@@ -1,4 +1,5 @@
 import { PROTOCOL3000COMMANDS } from './constants.js'
+import { getFeedbackDefinitions } from './feedbacks.js'
 
 export function getActionDefinitions(self) {
 	if (!self.configOk) return {}
@@ -9,6 +10,7 @@ export function getActionDefinitions(self) {
 	const decoderChoices = self.decoderSockets.map((decoder) => ({ id: decoder.id, label: decoder.id }))
 	const encoderDefault = encoderChoices.at(0).id
 	const decoderDefault = decoderChoices.at(0).id
+	const feedbackIds = Object.keys(getFeedbackDefinitions(self))
 	const DirectionChoice = {
 		id: 'direction',
 		type: 'dropdown',
@@ -419,28 +421,30 @@ export function getActionDefinitions(self) {
 					type: 'checkbox',
 					id: 'use_selected_area',
 					label: 'Use currently selected area',
-					default: true,
+					default: false,
 				},
 				{
 					id: 'area_selection',
-					type: 'dropdown',
+					type: 'number',
 					label: 'Area',
-					choices: areaChoices,
-					default: defaultArea,
+					min: 1,
+					max: 999,
+					default: 0,
 					isVisible: (options) => !options.use_selected_area,
 				},
 				{
 					type: 'checkbox',
 					id: 'use_selected_channel',
 					label: 'Use currently selected channel',
-					default: true,
+					default: false,
 				},
 				{
 					id: 'channel',
-					type: 'dropdown',
+					type: 'number',
 					label: 'Channel',
-					choices: encoderChoices,
-					default: encoderDefault,
+					min: 1,
+					max: 999,
+					default: 0,
 					isVisible: (options) => !options.use_selected_channel,
 				},
 			],
@@ -463,6 +467,7 @@ export function getActionDefinitions(self) {
 					}
 					socket.send(`#KDS-CHANNEL-SELECT VIDEO,${channelId}\r`)
 				})
+				area.channel = channelId
 			},
 		}
 		actions.apply_videowall = {
