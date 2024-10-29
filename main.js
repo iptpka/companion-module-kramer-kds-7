@@ -48,7 +48,7 @@ class KDS7Instance extends InstanceBase {
 
 			socket.on('error', (err) => {
 				this.updateStatus(InstanceStatus.ConnectionFailure, err.message)
-				console.log('error', 'Network error: ' + err.message)
+				this.log('error', `Network error: ${err.message}`)
 			})
 
 			socket.on('data', (data) => this.handleDataResponse(socket, data))
@@ -214,7 +214,7 @@ class KDS7Instance extends InstanceBase {
 
 		if (this.config.decoderamount != rows * columns) {
 			this.updateStatus(InstanceStatus.BadConfig)
-			console.log("Bad videowall config! Rows and columns don't match the amount of decoder devices.")
+			this.log('warn', "Bad videowall config! Rows and columns don't match the amount of decoder devices.")
 			return
 		}
 		let defaultChannel = this.config.defaultchannel
@@ -284,7 +284,6 @@ class KDS7Instance extends InstanceBase {
 					const channelId = parseInt(queryResponse[1].parameters.split(',')[1])
 					const area = this.videowall.elements.find((element) => element.index === socketId - 1).owner
 					area.channel = channelId
-					this.log('warn', `${area.channel}`)
 				} catch (error) {
 					this.log('error', error.message)
 				}

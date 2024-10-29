@@ -123,10 +123,10 @@ export function getActionDefinitions(self) {
 				const deviceNumber = options.device_type == 'encoder' ? options.encoder : options.decoder
 				if (sockets !== undefined && sockets.at(parseInt(deviceNumber - 1)).isConnected) {
 					let socket = sockets.at(parseInt(deviceNumber - 1))
-					console.log(`Sending command to ${socket.label}:`, cmd)
+					self.log('info', `Sending command to ${socket.label}: ${cmd}`)
 					socket.send(cmd)
 				} else {
-					console.log('Socket not connected!')
+					self.log('warn', 'Socket not connected!')
 				}
 			},
 		},
@@ -194,7 +194,7 @@ export function getActionDefinitions(self) {
 					: `${options.command_selection} ${options.parameters}\r`
 				const cmd = await self.parseVariablesInString(cmdContent)
 				const sockets = options.device_type == 'encoder' ? self.encoderSockets : self.decoderSockets
-				console.log(`Broadcasting to all ${options.device_type}s command:`, cmd)
+				self.log('info', `Broadcasting to all ${options.device_type}s command: ${cmd}`)
 				sockets.forEach((socket) => {
 					if (!socket.isConnected) {
 						console.log(`Socket for ${socket.label} not connected!`)
@@ -285,12 +285,12 @@ export function getActionDefinitions(self) {
 				const cmd = await self.parseVariablesInString(cmdContent)
 				const selectionId = options.use_current ? self.getVariableValue('selected_area') : options.area_selection
 				const area = self.videowall.areas.find((area) => area.id === selectionId)
-				console.log(`Multicasting to all decoders in area ${area.id} command:`, cmd)
+				self.log('info', `Multicasting to all decoders in area ${area.id} command: ${cmd}`)
 
 				area.elements.forEach((element) => {
 					const socket = self.decoderSockets.find((socket) => socket.id === element.index + 1)
 					if (!socket.isConnected) {
-						console.log(`Socket for ${socket.label} not connected!`)
+						self.log('info', `Socket for ${socket.label} not connected!`)
 						return
 					}
 					socket.send(cmd.replace('<Id>', element.outputId))
@@ -334,8 +334,7 @@ export function getActionDefinitions(self) {
 				{
 					type: 'checkbox',
 					id: 'is_background',
-					label:
-						"Area is background",
+					label: 'Area is background',
 					tooltip:
 						"Is this used as a 'background'. If yes, will always act as if this area spans the whole wall, regardless of the actual dimensions of it's elements",
 					default: false,
@@ -345,7 +344,6 @@ export function getActionDefinitions(self) {
 			callback: async (action) => {
 				if (!self.configOk || self.videowall === undefined) return
 				const options = action.options
-				console.log(options.decoders)
 				let area
 				switch (options.area_selection) {
 					case 'new':
@@ -395,7 +393,7 @@ export function getActionDefinitions(self) {
 					type: 'checkbox',
 					id: 'is_background',
 					label:
-						"Is this used as a 'background'. If yes, will always act as if this area spans the whole wall, regardless of the actual dimensions of it's elements",
+						"Is this used as a 'background'. If yes, will always act as if this area spans the whole wall, regardless of the actual dimensions of its elements",
 					default: false,
 				},
 			],
@@ -403,7 +401,7 @@ export function getActionDefinitions(self) {
 				if (!self.configOk || self.videowall === undefined) return
 				if (self.videowall.areas.length < self.videowall.maxAreas) {
 					const area = self.videowall.addArea(undefined, action.options.channel, action.options.is_background)
-					console.log(`Added new area to internal video wall, id: ${area.id}`)
+					self.log('debug', `Added new area to internal video wall, id: ${area.id}`)
 				}
 			},
 		}
@@ -457,12 +455,12 @@ export function getActionDefinitions(self) {
 				const area = self.videowall.areas.find((area) => area.id === areaSelectionId)
 				const channelId = options.use_selected_channel ? self.getVariableValue('selected_channel') : options.channel
 
-				console.log(`Switching area ${area.id} channel to ${channelId}`)
+				self.log('info', `Switching area ${area.id} channel to ${channelId}`)
 
 				area.elements.forEach((element) => {
 					const socket = self.decoderSockets.find((socket) => socket.id === element.index + 1)
 					if (!socket.isConnected) {
-						console.log(`Socket for ${socket.label} not connected!`)
+						self.log('warn', `Socket for ${socket.label} not connected!`)
 						return
 					}
 					socket.send(`#KDS-CHANNEL-SELECT VIDEO,${channelId}\r`)
@@ -494,7 +492,7 @@ export function getActionDefinitions(self) {
 					area.elements.forEach((element) => {
 						const socket = self.decoderSockets.find((socket) => socket.id === element.index + 1)
 						if (!socket.isConnected || !self.configOk) {
-							console.log(`Socket for ${socket.label} not connected!`)
+							self.log('warn', `Socket for ${socket.label} not connected!`)
 							return
 						}
 						socket.send(`#VIEW-MOD 15,${area.width},${area.height}\r`)
@@ -520,7 +518,7 @@ export function getActionDefinitions(self) {
 			],
 			callback: async () => {
 				if (self.videowall === undefined || !self.configOk) return
-				console.log('Resetting video wall partition')
+				self.log('debug', 'Resetting video wall partition')
 				self.videowall.clear()
 				self.setVariableValues({ selected_area: self.videowall.areas.at(0).id })
 				self.setVariableValues({ area_amount: 1 })
@@ -562,8 +560,7 @@ export function getActionDefinitions(self) {
 				}
 				const direction = action.options.direction === 'next' ? 1 : -1
 				self.setVariableValues({
-					selected_area: self.videowall.areas.at((selected_area - 1 + direction) % self.videowall.areas.length)
-						.id,
+					selected_area: self.videowall.areas.at((selected_area - 1 + direction) % self.videowall.areas.length).id,
 				})
 			},
 		}
@@ -624,9 +621,9 @@ export function getActionDefinitions(self) {
 				console.log(self.videowall.elements)
 				console.log(self.videowall.areas)
 				self.videowall.areas.forEach((area) => {
-					console.log(`area ${area.id} has changes?: ${area.peekChanges()}`)
+					self.log('debug', `area ${area.id} has changes?: ${area.peekChanges()}`)
 				})
-				console.log(`Area amount: ${self.videowall.areas.length}`)
+				self.log('debug', `Area amount: ${self.videowall.areas.length}`)
 			},
 		}
 	}

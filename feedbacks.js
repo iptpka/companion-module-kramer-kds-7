@@ -40,7 +40,6 @@ export function getFeedbackDefinitions(self) {
 				},
 			],
 			callback: (feedback) => {
-				console.log('check')
 				if (
 					!(
 						self.channels.some((channel) => channel === feedback.options.channel) &&
@@ -48,7 +47,6 @@ export function getFeedbackDefinitions(self) {
 					)
 				)
 					return false //selected area or channel not found
-				console.log(`${self.videowall.areas.find((area) => area.id === feedback.options.area).channel}`)
 				if (self.videowall.areas.find((area) => area.id === feedback.options.area).channel === feedback.options.channel) {
 					return true
 				} else {
