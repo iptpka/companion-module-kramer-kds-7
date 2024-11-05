@@ -12,7 +12,6 @@ export function getFeedbackDefinitions(self) {
 		const area = areas.at(x)
 		return { id: area.id, label: `${area.id}: ${area.elements.length} elements` }
 	})
-	const defaultArea = areaChoices.at(0).id
 	const feedbacks = {
 		AreaChannel: {
 			name: 'Area: Check channel',

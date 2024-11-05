@@ -590,20 +590,6 @@ export function getActionDefinitions(self) {
 				})
 			},
 		}
-		actions.toggle_corner = {
-			name: 'Toggle corner view',
-			options: [
-				{
-					type: 'static-text',
-					id: 'title',
-					label: 'Information',
-					value: '',
-					width: 12,
-				},
-				DirectionChoice,
-			],
-			callback: async (action) => {},
-		}
 		actions.log_videowall_status = {
 			name: 'DEBUG Log video wall status',
 			options: [
