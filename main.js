@@ -4,23 +4,16 @@ import { getActionDefinitions } from './actions.js'
 import { getFeedbackDefinitions } from './feedbacks.js'
 import { getVariableDefinitions } from './variables.js'
 import { ConfigFields } from './config.js'
-import { incrementedIP, promiseAllOrTimeout } from './utils.js'
+import { incrementedIP, promiseAllOrTimeout, parseRangeOrListStringToArray } from './utils.js'
 import { VideoWall } from './videowall.js'
 
 class KDS7Instance extends InstanceBase {
-	async handleDataResponse(socket, data) {
-		const dataResponse = data.toString()
-		// Workaround for weird empty data, the buffer probably doesn't get cleared properly sometimes
-		if (dataResponse.length === 0) return
-		this.log(socket.logAsInfo ? 'info' : 'debug', `KDS ${socket.label}: ${dataResponse}`)
-	}
-
 	constructor(internal) {
 		super(internal)
 		this.encoderSockets = []
 		this.decoderSockets = []
 		this.configOk = false
-		this.channels = []
+		this.autoSwappedChannels = []
 	}
 
 	get sockets() {
@@ -38,6 +31,36 @@ class KDS7Instance extends InstanceBase {
 		return config !== undefined && config.port != '' && config.encoderaddress != '' && config.decoderaddress != ''
 	}
 
+	async handleDecoderDataResponse(socket, data) {
+		const dataResponse = data.toString()
+		// Workaround for weird empty data, the buffer probably doesn't get cleared properly sometimes
+		if (dataResponse.length === 0) return
+		if (dataResponse.startsWith('KDS-CHANNEL-SELECT video', 4)) {
+			//socket.channelInUse = dataResponse.slice(dataResponse.length-1)
+		}
+		this.log(socket.logAsInfo ? 'info' : 'debug', `Message from ${socket.label}: ${dataResponse}`)
+	}
+
+	async handleChannelSignalStatusChange(encoder, message) {
+		if (message.includes('out')) { // Encoder is getting signal
+			this.setVariableValues({ new_connected_input: encoder.channelId })
+			
+		} else { // Encoder has lost signal
+
+		}
+		this.checkFeedbacks(...Object.keys(getFeedbackDefinitions(this)))
+	}
+	
+	async handleEncoderDataResponse(socket, data) {
+		const dataResponse = data.toString()
+		if (dataResponse.length === 0) return
+		if (dataResponse.startsWith('SIGNALS-LIST', 4)) {
+			this.log('debug', 'signal status change')
+			this.handleChannelSignalStatusChange(socket, dataResponse)
+		}
+		this.log(socket.logAsInfo ? 'info' : 'debug', `Message from ${socket.label}: ${dataResponse}`)
+	}
+
 	createSockets(addresses, devicetype) {
 		return addresses.map((address, i) => {
 			const socket = new TCPHelper(address, this.config.port)
@@ -50,8 +73,11 @@ class KDS7Instance extends InstanceBase {
 				this.updateStatus(InstanceStatus.ConnectionFailure, err.message)
 				this.log('error', `Network error: ${err.message}`)
 			})
-
-			socket.on('data', (data) => this.handleDataResponse(socket, data))
+			if (devicetype === 'decoder') {
+				socket.on('data', async (data) => this.handleDecoderDataResponse(socket, data))
+			} else {
+				socket.on('data', async (data) => this.handleEncoderDataResponse(socket, data))
+			}
 			return socket
 		})
 	}
@@ -66,6 +92,7 @@ class KDS7Instance extends InstanceBase {
 		const encoderAddresses = this.createAddressRange(this.config.encoderaddress, this.config.encoderamount)
 		const decoderAddresses = this.createAddressRange(this.config.decoderaddress, this.config.decoderamount)
 		this.decoderSockets = this.createSockets(decoderAddresses, 'decoder')
+		//this.decoderSockets.sort((a, b) => a.id - b.id)
 		this.encoderSockets = this.createSockets(encoderAddresses, 'encoder')
 	}
 
@@ -127,7 +154,6 @@ class KDS7Instance extends InstanceBase {
 				new Map(queryResponses).forEach((response, encoderSocket) => {
 					const channelId = parseInt(response.parameters)
 					encoderSocket.channelId = channelId
-					this.channels.push(channelId)
 				})
 			})
 			.catch((error) => {
@@ -164,7 +190,7 @@ class KDS7Instance extends InstanceBase {
 		return { command: responseArray[0], parameters: responseArray[1] }
 	}
 
-	simpleP3KResponseResolver(self, validationString) {
+	simpleP3KResponseResolver(self, validationString, extraData) {
 		return function (socket, response, responsePromise) {
 			if (!response.includes(validationString)) {
 				if (response.includes('ERR')) {
@@ -172,7 +198,7 @@ class KDS7Instance extends InstanceBase {
 				}
 				return false
 			}
-			responsePromise.resolve([socket, self.parseResponse(response)])
+			responsePromise.resolve([socket, self.parseResponse(response), extraData])
 			return true
 		}
 	}
@@ -193,13 +219,29 @@ class KDS7Instance extends InstanceBase {
 		return promiseAllOrTimeout(queries, 5000, 'Video Wall query timeout!')
 	}
 
-	async queryChannelsInUse() {
+	// Query one decoder from each view area for the channel it is using.
+	async queryViewAreaChannelsInUse() {
 		let queries = []
 		this.videowall.areas.forEach((area) => {
-			const socket = this.decoderSockets.find((socket) => socket.id === area.elements.at(0).index + 1)
+			const socket = this.decoderSockets.find((socket) => socket.id == area.elements.at(0).index + 1)
 			queries.push(
 				this.protocolQuery(
 					socket,
+					'#KDS-CHANNEL-SELECT? video\r',
+					this.simpleP3KResponseResolver(this, 'KDS-CHANNEL-SELECT', area)
+				)
+			)
+		})
+		return promiseAllOrTimeout(queries, 5000, 'Video wall channel in use query timeout!')
+	}
+	
+	// Query all decoders for the channel they are using. For non-video wall use.
+	async queryChannelsInUse() {
+		let queries = []
+		this.decoderSockets.forEach((decoder) => {
+			queries.push(
+				this.protocolQuery(
+					decoder,
 					'#KDS-CHANNEL-SELECT? video\r',
 					this.simpleP3KResponseResolver(this, 'KDS-CHANNEL-SELECT')
 				)
@@ -207,8 +249,9 @@ class KDS7Instance extends InstanceBase {
 		})
 		return promiseAllOrTimeout(queries, 5000, 'Video wall channel in use query timeout!')
 	}
-
+	
 	async updateVideoWall() {
+		if (!this.config.isvideowall) return
 		const rows = this.config.videowallrows
 		const columns = this.config.videowallcolumns
 
@@ -218,7 +261,7 @@ class KDS7Instance extends InstanceBase {
 			return
 		}
 		let defaultChannel = this.config.defaultchannel
-		if (!this.encoderSockets.some((encoder) => encoder.channelId === defaultChannel)) {
+		if (!this.encoderSockets.some((encoder) => encoder.channelId == defaultChannel)) {
 			defaultChannel = this.encoderSockets.at(0).channelId
 			this.log('warn', `No encoder matching "Default channel" ${this.config.defaultchannel} set in the configuration!`)
 			this.log('warn', `Setting default channel as ${defaultChannel}`)
@@ -276,23 +319,26 @@ class KDS7Instance extends InstanceBase {
 			.catch((error) => {
 				this.log('error', error.message)
 			})
-			
-		return this.queryChannelsInUse().then(async (queryResponses) => {
-			queryResponses.forEach(async (queryResponse) => {
-				try {
-					const socketId = queryResponse[0].id
-					const channelId = parseInt(queryResponse[1].parameters.split(',')[1])
-					const area = this.videowall.elements.find((element) => element.index === socketId - 1).owner
-					area.channel = channelId
-				} catch (error) {
-					this.log('error', error.message)
-				}
 
-
+		return this.queryViewAreaChannelsInUse()
+			.then(async (queryResponses) => {
+				queryResponses.forEach(async (queryResponse) => {
+					try {
+						const socketId = queryResponse[0].id
+						const channelId = parseInt(queryResponse[1].parameters.split(',')[1])
+						const area = queryResponse[2]
+						area.channel = channelId
+						area.elements.forEach((element) => {
+							//this.decoderSockets.at(element.index + 1).channelInUse = channelId
+						})
+					} catch (error) {
+						this.log('error', error.message)
+					}
+				})
 			})
-		}).catch((error) => {
-			this.log('error', error.message)
-		})
+			.catch((error) => {
+				this.log('error', error.message)
+			})
 	}
 
 	/**
@@ -336,7 +382,7 @@ class KDS7Instance extends InstanceBase {
 		if (!this.configOk) {
 			return
 		}
-
+		this.autoSwappedChannels = parseRangeOrListStringToArray(this.config.auto_swapped_channels)
 		this.updateStatus(InstanceStatus.Connecting)
 		this.initTCP()
 		this.updateVariableDefinitions()
@@ -344,7 +390,12 @@ class KDS7Instance extends InstanceBase {
 			await this.verifyConnections()
 			await this.protocol3000Handshake()
 			await this.queryChannelIds()
-			await this.updateVideoWall()
+			if (this.config.isvideowall)
+			{
+				await this.updateVideoWall()
+			} else {
+				// Query decoders for channels in use
+			}
 			this.updateVariables()
 			this.updateActions()
 			this.updateFeedbacks()
@@ -356,17 +407,10 @@ class KDS7Instance extends InstanceBase {
 		}
 	}
 
-	checkConfigChanged(config) {
-		for (const key of Object.keys(config)) {
-			if (this.config[key] !== config[key]) return false
-		}
-		return true
-	}
 	async configUpdated(config) {
-		const configSame = this.checkConfigChanged(config)
-		if (configSame) return
-		this.configOk = this.validateConfig(config)
 		this.config = config
+		this.log('debug', `${this.label} config updated`)
+		this.configOk = this.validateConfig(config)
 		if (!this.configOk) {
 			this.updateStatus(InstanceStatus.BadConfig)
 			this.log('error', `Module ${this.label} bad config. Connection not formed.`)
@@ -400,8 +444,9 @@ class KDS7Instance extends InstanceBase {
 				selected_channel: this.encoderSockets.at(0).channelId,
 				channel_amount: this.encoderSockets.length,
 				default_channel: this.config.defaultchannel,
+				auto_swapped_channels: this.autoSwappedChannels.join(','),
 			})
-			if (this.config.videowall) {
+			if (this.config.isvideowall) {
 				this.setVariableValues({
 					selected_area: this.videowall.areas.at(0).id,
 					area_amount: this.videowall.areas.length.toString(),

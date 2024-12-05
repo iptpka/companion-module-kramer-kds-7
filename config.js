@@ -1,5 +1,5 @@
 import { Regex } from '@companion-module/base'
-
+import { INTEGER_LIST_OR_RANGE } from './constants.js'
 export const ConfigFields = [
 	{
 		type: 'textinput',
@@ -77,8 +77,8 @@ export const ConfigFields = [
 	},
 	{
 		type: 'checkbox',
-		id: 'videowall',
-		label: 'Is this module used for controlling a video wall',
+		id: 'isvideowall',
+		label: 'Is this connection used for controlling a video wall',
 		default: true,
 		width: 4,
 	},
@@ -109,4 +109,20 @@ export const ConfigFields = [
 		max: 256,
 		isVisible: (options) => options.videowall,
 	},
+	{
+		id: 'auto_swapped_channels',
+		type: 'textinput',
+		label: 'Auto-swapped channels',
+		default: '',
+		regex: INTEGER_LIST_OR_RANGE,
+	},
+	{
+		type: 'number',
+		id: 'fallback_channel',
+		label: 'Fallback channel',
+		default: 1,
+		min: 1,
+		max: 999,
+	},
+	
 ]

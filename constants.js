@@ -657,3 +657,6 @@ export const PROTOCOL3000COMMANDS = [
 		parameters: '<direction_type1>.<port_type1>.<port_index1>.<signal_type1>.<index1>',
 	},
 ]
+export const INTEGER_LIST_OR_RANGE = "/(^$)|(^((\\*{1})|(([0-9]{1,3}))|(\\d{1,3}-(\\d{1,3})|(\\d{1,3})-\\d{1,3})|((\\d){1,3}(,\\d{1,3})+))$)/"
+export const CHANNEL = "/(^\\$\\(.+\\)$)|(^[1-9][0-9]{0,2}$)/"
+export const AREA = "/(^\\$\\(.+\\)$)|(^[1-9]+$)/"

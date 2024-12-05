@@ -1,4 +1,5 @@
 import { combineRgb } from '@companion-module/base'
+import { CHANNEL, AREA } from './constants.js'
 
 export function getFeedbackDefinitions(self) {
 	if (!self.configOk) return {}
@@ -6,12 +7,7 @@ export function getFeedbackDefinitions(self) {
 		id: encoder.channelId,
 		label: `Channel ${encoder.channelId}`,
 	}))
-	const defaultEncoder = encoderChoices.at(0).id
-	const areas = self.videowall.areas
-	const areaChoices = [...Array(self.videowall.areas.length).keys()].map((x) => {
-		const area = areas.at(x)
-		return { id: area.id, label: `${area.id}: ${area.elements.length} elements` }
-	})
+	const encoderDefault = encoderChoices.at(0).id
 	const feedbacks = {
 		AreaChannel: {
 			name: 'Area: Check channel',
@@ -23,30 +19,28 @@ export function getFeedbackDefinitions(self) {
 			options: [
 				{
 					id: 'area',
-					type: 'number',
+					type: 'textinput',
 					label: 'Area',
-					min: 1,
-					max: 999,
-					default: 1,
+					default: '1',
+					regex: AREA,
 				},
 				{
 					id: 'channel',
-					type: 'number',
+					type: 'textinput',
 					label: 'Channel',
-					min: 1,
-					max: 999,
-					default: 1,
+					default: encoderDefault,
+					regex: CHANNEL
 				},
 			],
 			callback: (feedback) => {
 				if (
 					!(
-						self.channels.some((channel) => channel === feedback.options.channel) &&
-						self.videowall.areas.some((area) => area.id === feedback.options.area)
+						self.encoderSockets.some((encoder) => encoder.channelId == feedback.options.channel) &&
+						self.videowall.areas.some((area) => area.id == feedback.options.area)
 					)
 				)
 					return false //selected area or channel not found
-				if (self.videowall.areas.find((area) => area.id === feedback.options.area).channel === feedback.options.channel) {
+				if (self.videowall.areas.find((area) => area.id == feedback.options.area).channel === feedback.options.channel) {
 					return true
 				} else {
 					return false
@@ -96,8 +90,29 @@ export function getFeedbackDefinitions(self) {
 				},
 			],
 			callback: (feedback) => {
-				//should this be an async query to encoder if that channel is actually outputting something? 
-				if (self.channels.some((channel) => channel === feedback.options.channel)) {
+				//should this be an async query to encoder if that channel is actually outputting something?
+				if (self.encoderSockets.some((encoder) => encoder.channelId === feedback.options.channel)) {
+					return true
+				} else {
+					return false
+				}
+			},
+		},
+		IsAutoSwapping: {
+			name: 'Channel: Is auto-swapping on',
+			type: 'boolean',
+			options: [
+				{
+					id: 'channel',
+					type: 'textinput',
+					label: 'Channel',
+					default: '1',
+					useVariables: true
+				},
+			],
+			callback: async (feedback, context) => {
+				const channel = await context.parseVariablesInString(feedback.options.channel)
+				if (self.autoSwappedChannels.includes(channel)) {
 					return true
 				} else {
 					return false

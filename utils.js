@@ -10,3 +10,14 @@ export async function promiseAllOrTimeout(promises, milliseconds, timeoutMessage
 	})
 	return Promise.race([Promise.all(promises), timeout])
 }
+
+export function parseRangeOrListStringToArray(string) {
+	if (string.includes('-')) {
+		const bounds = string.split('-')
+		let start = Math.min(parseInt(bounds[0]))
+		const end = Math.max(parseInt(bounds[1]))
+		const size = end - start
+		return [...Array(size + 1).keys()].map((x) => start++)
+	}
+	return string.split(',')
+}
