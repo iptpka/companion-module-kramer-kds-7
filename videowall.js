@@ -197,6 +197,12 @@ class Area {
 		})
 		this.elements.length = 0
 	}
+	
+	setIsBackground(isBackground) {
+		this.isBackground = isBackground
+		this.calculateBounds()
+		this.assignOutputIds()
+	}
 }
 
 //Contains the wall partition (how the wall is divided into subsets) and dimensions of  the wall
@@ -212,15 +218,19 @@ export class VideoWall {
 	}
 
 	get elements() {
-		return this.wall.flat()
+		return Array.from(this.wall)
 	}
 
 	newWall(rows, columns) {
-		let i = 0
-		const wall = [...Array(rows).keys()].map(
-			(y) => (y = [...Array(columns).keys()].map((x) => (x = new Element(x, y, i++))))
-		)
-		return wall
+		let x = 0
+		let y = 0
+		const elements = [...Array(rows * columns).keys()].map((i) => {
+			const element = new Element(x, y, i)
+			y = x == columns - 1 ? y + 1 : y
+			x = (x+1) % columns
+			return element
+		})
+		return elements
 	}
 
 	addArea(elements = undefined, channel = this.defaultChannel, isBackground = false) {
