@@ -6,6 +6,7 @@ export const ConfigFields = [
 		id: 'port',
 		label: 'Target Port',
 		width: 4,
+		default: '',
 		regex: Regex.PORT,
 	},
 	{
@@ -89,7 +90,7 @@ export const ConfigFields = [
 		default: 1,
 		min: 1,
 		max: 256,
-		isVisible: (options) => options.videowall,
+		isVisible: (options) => options.isvideowall,
 	},
 	{
 		type: 'number',
@@ -98,7 +99,7 @@ export const ConfigFields = [
 		default: 1,
 		min: 1,
 		max: 256,
-		isVisible: (options) => options.videowall,
+		isVisible: (options) => options.isvideowall,
 	},
 	{
 		type: 'number',
@@ -107,7 +108,7 @@ export const ConfigFields = [
 		default: 1,
 		min: 1,
 		max: 256,
-		isVisible: (options) => options.videowall,
+		isVisible: (options) => options.isvideowall,
 	},
 	{
 		id: 'auto_swapped_channels',

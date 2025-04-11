@@ -21,14 +21,14 @@ class KDS7Instance extends InstanceBase {
 	}
 
 	async init(config) {
-		this.updateStatus(InstanceStatus.Disconnected)
+		this.updateStatus(InstanceStatus.Disconnected, "Initializing")
 		this.config = config
 		this.configOk = this.validateConfig(config)
 		this.createConnections()
 	}
 
 	validateConfig(config) {
-		return config !== undefined && config.port != '' && config.encoderaddress != '' && config.decoderaddress != ''
+		return config !== undefined && config.port !== '' && config.encoderaddress !== '' && config.decoderaddress !== ''
 	}
 
 	async handleDecoderDataResponse(socket, data) {
